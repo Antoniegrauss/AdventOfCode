@@ -1,0 +1,10 @@
+# C#
+**/bin/
+**/obj/
+
+# Python
+**/*.pyc
+
+# Hide puzzle inputs (requested by Advent of Code author)
+**/input/
+**/doctest-output/

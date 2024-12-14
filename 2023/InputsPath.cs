@@ -1,0 +1,1 @@
+const string PATH_TO_INPUT = "../input/"
