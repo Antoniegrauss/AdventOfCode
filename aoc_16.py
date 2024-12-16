@@ -1,5 +1,6 @@
 from grid import Grid
 from grid import Pathfinding
+from grid import unique_positions
 
 def main():
     print("Day 16")
@@ -11,7 +12,8 @@ def main():
     path, cost = test_pathfinder_2.dijkstra_with_cost(start=start, end=end, 
                                                  is_valid_function=is_valid)
     print(path, cost)
-    test_pathfinder_2.grid.print_path(path)
+    test_pathfinder_2.grid.print_multiple_paths(path)
+    print(unique_positions(path))
 
 if __name__== "__main__":
     main()

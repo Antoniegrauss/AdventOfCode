@@ -1,6 +1,7 @@
 from grid import Grid
 from grid import Pathfinding
 from grid import Path
+from grid import unique_positions
 
 def main():
     # Test BFS
@@ -26,7 +27,9 @@ def main():
     end = test_pathfinder_1.grid.find_character("E")[0]
     path, cost = test_pathfinder_1.dijkstra_with_cost(start=start, end=end, 
                                                  is_valid_function=is_valid)
-    test_pathfinder_1.grid.print_path(path.positions)
+    test_pathfinder_1.grid.print_path(path)
+    assert(unique_positions(path)==45)
+    print(unique_positions(path))
     assert(cost == 7036)
     
     test_pathfinder_2 = Pathfinding(Grid(grids[1]))
@@ -34,7 +37,9 @@ def main():
     end = test_pathfinder_2.grid.find_character("E")[0]
     path, cost = test_pathfinder_2.dijkstra_with_cost(start=start, end=end, 
                                                  is_valid_function=is_valid)
-    test_pathfinder_2.grid.print_path(path.positions)
+    test_pathfinder_2.grid.print_path(unique_positions(path))
+    assert(unique_positions(path) == 64)
+    print(unique_positions(path) )
     assert(cost == 11048)
         
     test_pathfinder_3 = Pathfinding(Grid(grids[2]))
@@ -42,24 +47,29 @@ def main():
     end = test_pathfinder_3.grid.find_character("E")[0]
     path, cost = test_pathfinder_3.dijkstra_with_cost(start=start, end=end, 
                                                  is_valid_function=is_valid)
-    test_pathfinder_3.grid.print_path(path.positions)
+    test_pathfinder_3.grid.print_path(unique_positions(path))
+    assert(unique_positions(path)==149)
+    print(unique_positions(path))
     assert(cost == 21148)
-    
-    test_pathfinder_4 = Pathfinding(Grid(grids[3]))
-    start = test_pathfinder_4.grid.find_character("S")[0]
-    end = test_pathfinder_4.grid.find_character("E")[0]
-    path, cost = test_pathfinder_4.dijkstra_with_cost(start=start, end=end, 
-                                                 is_valid_function=is_valid)
-    test_pathfinder_4.grid.print_path(path.positions)
-    assert(cost == 21110)
     
     test_pathfinder_5 = Pathfinding(Grid(grids[4]))
     start = test_pathfinder_5.grid.find_character("S")[0]
     end = test_pathfinder_5.grid.find_character("E")[0]
     path, cost = test_pathfinder_5.dijkstra_with_cost(start=start, end=end, 
                                                  is_valid_function=is_valid)
-    test_pathfinder_5.grid.print_path(path.positions)
+    # test_pathfinder_5.grid.print_path(unique_positions(path))
+    print(unique_positions(path))
     print(cost)
     assert(cost == 4013)
+    
+    test_pathfinder_4 = Pathfinding(Grid(grids[3]))
+    start = test_pathfinder_4.grid.find_character("S")[0]
+    end = test_pathfinder_4.grid.find_character("E")[0]
+    path, cost = test_pathfinder_4.dijkstra_with_cost(start=start, end=end, 
+                                                 is_valid_function=is_valid)
+    test_pathfinder_4.grid.print_path(unique_positions(path))
+    assert(unique_positions(path)==264)
+    print(unique_positions(path))
+    assert(cost == 21110)
 if __name__ == "__main__":
     main()
