@@ -5,7 +5,6 @@ class Program():
         self.c = c
         self.instructions = instructions
         self.instruction_pointer = 0
-        self.start_a = 0
         
         self.output = []
         
@@ -48,7 +47,8 @@ class Program():
     def do_instruction(self) -> bool:
         should_jump = True
         instruction = self.instructions[self.instruction_pointer]
-        print(f"{instruction}, {self.instructions[self.instruction_pointer]}")
+        # print(f"{instruction}, {self.instructions[self.instruction_pointer + 1]}" +
+        #       f", a: {self.a}, b: {self.b}, c: {self.c}")
         if instruction == 0:
             self.a = int(self.a / (2 ** self.combo_operand()))
         elif instruction == 1:
@@ -76,8 +76,7 @@ class Program():
         self.instruction_pointer += 2
         
     def set_registers(self, a, b, c):
-        self.start_a = a
-        self.a = self.start_a
+        self.a = a
         self.b = b
         self.c = c
 
@@ -93,6 +92,64 @@ def add_chunks(counter, sets):
             sets.append(set())
         sets[chunk_id].add(chunk)
 
+def opcode(reg, prog, verbose=False, part=1):
+    i = 0
+    output = []
+
+    while True:    
+        op = prog[i]
+        li = prog[i+1]
+        
+        # combo from literal
+        co = li 
+        if co>3 and co<7:
+            co=reg[co-4]        
+        
+        if verbose:
+            print(f"{i} | {op} : {co} | ",end="")
+        
+        if op==0: # adv
+            reg[0] = reg[0] // 2**co  
+        elif op==1: # bxl
+            reg[1] = reg[1] ^ li 
+        elif op==2: # bst
+            reg[1] = co % 8
+        elif op==3: # jnz
+            if reg[0]!=0: 
+                i = li - 2
+        elif op==4: # bxc
+            reg[1] = reg[1] ^ reg[2]
+        elif op==5: # out
+            output += [ co % 8 ]
+            #if part==2 and output != prog[:len(output)]:
+            #    return None, None
+        elif op==6: # bdv
+            reg[1] = reg[0] // 2**co  
+        elif op==7: # cdv
+            reg[2] = reg[0] // 2**co  
+
+        if verbose:
+            print(reg)
+
+        i+=2
+        if i>=len(prog):
+            break
+    return output,reg
+
+def findA(program, a=0, b=0, c=0, ip=-1):
+    if abs(ip) > len(program.instructions): 
+      return a
+    for i in range(8):
+        aa = a * 8 + i
+        program.set_registers(aa, b, c)
+        output = program.perform_operations_part_1()
+        if output[0]==program.instructions[ip]:
+            print(ip)
+            aa = findA(program, aa, program.b, program.c, ip-1)
+            if aa:
+                return aa
+    return None
+
 def main():
     print("Day 16")
     input = (open("aoc_24/input/Day17.txt").readlines())
@@ -104,48 +161,10 @@ def main():
     
     program = Program(a, b, c, program)
     
-    # Part 1
-    output = program.perform_operations_part_1()
-    print(output)
-    
-    # Part 2
-    # Reverse the operations, given the outputs
-    
-    # counter = 0
-    # chunk_counter = 0
-    # increment = 2 ** (3*chunk_counter)
-    
-    # max_score = 1
-    # last_bit_same_times = 0
-    # last_bit_previous = 0
-    
-    # # Increments each time we find a chunk
-    # looking_for_chunk = 1
-    # while True:
-    #     program.set_registers(counter, 0, 0)
-    #     score = program.perform_operations_part_2()
-    #     if score > 1:
-    #         print(f"{score}, {bin(counter)}")
-    #         max_score = score
-            
-    #         last_unknown_chunk = counter % (2**(3*looking_for_chunk))
-    #         if last_unknown_chunk == last_bit_previous:
-    #             last_bit_same_times += 1
-    #         else:
-    #             last_bit_same_times = 0
-    #             last_bit_previous = last_unknown_chunk
-                
-    #         # If we cycled a whole chunk with no changes
-    #         # Add the chunk to the part we keep the same
-    #         if last_bit_same_times == 8:
-    #             last_bit_same_times = 0
-    #             chunk_counter += 1
-    #             increment = 2 ** (3*chunk_counter)
+    program.set_registers(0, 0, 0)
+    print(findA(program))
+    # print(findA_copy(program.instructions))
         
-    #     counter += increment
-    #     if counter == 100:
-    #         break
-    # print(f"Found a solution: {counter}, score: {max_score}")
         
 if __name__== "__main__":
     main()

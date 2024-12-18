@@ -28,11 +28,25 @@ def position_distance(position_1, position_2):
     return abs(position_1[0] - position_2[0]) + \
         abs(position_1[1] - position_2[1])
 
+def grid_factory_str(input: str):
+    grid = Grid()
+    grid.cells = [line.strip("\n") for line in input.split("\n")]
+    grid.width = len(grid.cells[0])
+    grid.height = len(grid.cells)
+    
+    return grid
+
+def grid_factory_sizes(width, height, fill_character):
+    grid = Grid()
+    grid.cells = [[fill_character for x in range(width)] for y in range(height)]
+    grid.width = width
+    grid.height = height
+    
+    return grid
+
 class Grid():
-    def __init__(self, input: str) -> None:
-        self.cells = [line.strip("\n") for line in input.split("\n")]
-        self.width = len(self.cells[0])
-        self.height = len(self.cells)
+    def __init__(self) -> None:
+        pass
     
     def is_in_bounds(self, position):
         return position[0] >= 0 and \
@@ -50,6 +64,9 @@ class Grid():
     
     def at(self, position):
         return self.cells[position[1]][position[0]]
+    
+    def set(self, position, character):
+        self.cells[position[1]][position[0]] = character
         
     def print_path(self, path):
         grid_copy = self.cells
@@ -57,7 +74,7 @@ class Grid():
             print_row = ""
             for x, cell in enumerate(row):
                 if (x, y) in path:
-                    print_row += "X"
+                    print_row += "O"
                 else:
                     print_row += cell
             print(print_row)
@@ -112,29 +129,34 @@ class Pathfinding():
         self.grid = grid
         
     # Pass a function to check whether locations are valid
-    def from_a_t_b_depth_first(self, start, end, is_valid_function, shortest_only=False):
+    def from_a_t_b_depth_first(self, start, end, is_valid_function, shortest_only=False, bfs=False):
         self.paths = []
         self.paths.append(Path([start]))
         solutions = []
         self.visited = set()
         
         while self.paths:
-            new_paths = []
-            for path in self.paths:
-                new_steps = self.add_new_steps(path.positions[-1])
-                
-                # Found end, add to solutions or return path
-                if end in new_steps:
-                    if shortest_only:
-                        return path.positions + [new_step]
-                    solutions.append(copy.deepcopy(path).add_step(end))
-                
-                # Add new valid steps    
-                for new_step in new_steps:
-                    if not is_valid_function(self.grid.at(new_step)):
-                        continue
-                    new_paths.append(copy.deepcopy(path).add_step(new_step))
-            self.paths = new_paths
+            if bfs:
+                # Breadth first search
+                path = self.paths[0]
+                self.paths.pop(0)
+            else:
+                # Depth first search
+                path = self.paths[-1]
+                self.paths.pop(-1)
+            new_steps = self.add_new_steps(path.positions[-1])
+            
+            # Found end, add to solutions or return path
+            if end in new_steps:
+                if shortest_only:
+                    return path.positions + [end]
+                solutions.append(copy.deepcopy(path).add_step(end))
+            
+            # Add new valid steps    
+            for new_step in new_steps:
+                if not is_valid_function(self.grid.at(new_step)):
+                    continue
+                self.paths.append(copy.deepcopy(path).add_step(new_step))
             
         return solutions
     
@@ -201,6 +223,44 @@ class Pathfinding():
                         solutions.append(new_path)
                     
         return solutions, self.lowest_cost_end
+    
+    # WIP have to add check for visited nodes and costs
+    def shortest_path_dijkstra(self, start, end, is_valid_function):
+        self.paths = []
+        self.paths.append(Path([start]))
+        self.visited = set()
+        turning_cost = 1000
+        
+        while self.paths:     
+            # Select path with lowest cost always                
+            path = min(self.paths, key=attrgetter('cost'))
+            self.paths.pop(self.paths.index(path))
+            
+            current_step = path.positions[-1]
+            new_steps = self.add_new_steps(current_step, allow_duplicates=True)
+            
+            # Add new valid steps    
+            for new_step in new_steps:
+                if new_step in path.positions or \
+                    not is_valid_function(self.grid.at(new_step)):
+                    continue
+                
+                new_path = copy.deepcopy(path)
+                new_path.add_step(new_step)
+                if not new_step in \
+                    self.lowest_costs or \
+                    self.lowest_costs[new_step] > \
+                        new_path.cost:
+                        
+                    self.lowest_costs[new_step] = \
+                        new_path.cost
+                    self.paths.append(new_path)
+
+                # Found end return path
+                if new_step == end:
+                    return path
+                    
+        return None
 
     # Grows patch around new_position
     def add_new_steps(self, position, allow_duplicates=False):
