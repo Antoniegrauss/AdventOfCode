@@ -1,5 +1,6 @@
 import copy
 from operator import attrgetter
+import networkx as nx
 
 # Gets adjacent neighbours for a position
 def get_neighbours(position):
@@ -30,7 +31,7 @@ def position_distance(position_1, position_2):
 
 def grid_factory_str(input: str):
     grid = Grid()
-    grid.cells = [line.strip("\n") for line in input.split("\n")]
+    grid.cells = [[x for x in line.strip("\n")] for line in input.split("\n")]
     grid.width = len(grid.cells[0])
     grid.height = len(grid.cells)
     
@@ -54,6 +55,12 @@ class Grid():
             position[0] < self.width and \
             position[1] < self.height
             
+    def is_border_position(self, position):
+        return position[0] == 0 or \
+            position[1] == 0 or \
+            position[0] == self.width - 1 or \
+            position[1] == self.height - 1
+            
     def find_character(self, character):
         correct = []
         for y, row in enumerate(self.cells):
@@ -67,6 +74,10 @@ class Grid():
     
     def set(self, position, character):
         self.cells[position[1]][position[0]] = character
+        
+    def print_grid(self):
+        for row in self.cells:
+            print("".join(row))
         
     def print_path(self, path):
         grid_copy = self.cells
@@ -275,3 +286,22 @@ class Pathfinding():
                 
             new_positions.append(neighbour)
         return new_positions
+    
+def network_x_insert_node(graph, grid, x, y, is_valid_function):
+    graph.add_node((x, y))
+    for neighbour in get_neighbours((x, y)):
+        if not grid.is_in_bounds(neighbour):
+            continue
+        if not is_valid_function(grid.at(neighbour)):
+            continue
+        graph.add_edge((x, y), neighbour)
+
+def network_x_graph(grid, is_valid_function):
+    G = nx.Graph()
+    for y, row in enumerate(grid.cells):
+        for x, cell in enumerate(row):
+            if not is_valid_function(cell):
+                continue
+            network_x_insert_node(G, grid, x, y, is_valid_function)
+    return G
+    
