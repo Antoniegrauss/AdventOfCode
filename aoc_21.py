@@ -1,5 +1,6 @@
 from grid import position_distance, add_positions
 from itertools import product
+import time
 
 def memoize(func):
     cache = {}
@@ -38,7 +39,6 @@ class KeypadSolver():
         }
         
         self.numpad_paths = setup_numpad_paths(self.numpad_positions, numpad_forbidden_position)
-        # print(numpad_paths)
         
         # Movepad
         # NOTE: forbidden position = 0, 0
@@ -78,10 +78,8 @@ class KeypadSolver():
         
         results = []
         for pattern in patterns:
-            print("Pattern: ", pattern)
             input_length = self.handle_pattern(pattern, depth)
             results.append(input_length * pattern_score(pattern))
-            print(f"Total cost of {pattern}: {results[-1]}")
             
         return sum(results)
             
@@ -106,7 +104,6 @@ class KeypadSolver():
         for path_option in path_options:
             start_position = 'A'
             expanded_paths = self.expand_paths(path_option, start_position)
-            print(f"{path_option} expanded into {expanded_paths}")
             current_costs = []
             for expanded_path in expanded_paths:
                 current_costs.append(self.recursive_score(expanded_path, depth-1))
@@ -350,7 +347,6 @@ def part_1(pattern, movepad_paths, movepad_lookup, numpad_paths):
         robot_2_paths.append(new_robot_2_paths)
         
     shortest_score_length = calculate_shortest_score_length(robot_2_paths)
-    # print(shortest_score_length, pattern_score(pattern))
     
     return shortest_score_length * pattern_score(pattern)
 
@@ -385,7 +381,6 @@ def main():
     
     global numpad_paths
     numpad_paths = setup_numpad_paths(numpad_positions, numpad_forbidden_position)
-    # print(numpad_paths)
     
     # Movepad
     # NOTE: forbidden position = 0, 0
@@ -415,7 +410,6 @@ def main():
     }
     global movepad_paths
     movepad_paths = setup_movepad_paths(movepad_positions, movepad_forbidden_position)
-    # print(movepad_paths)
     
     # You are pressing:
     # <vA<AA>>^AvAA<^A>A<v<A>>^AvA^A<vA>^A<v<A>^A>AAvA^A<v<A>A>^AAAvA<^A>A
@@ -451,7 +445,15 @@ def main():
     assert(solver.part_2(patterns, 3) == 212488)
     
     # Somehow part answer must be 1 robot higher than in my implementation
+    start = time.time()
     assert(solver.part_2(patterns, 26) == 258263972600402)
+    print(time.time() - start)
+    
+    # Still runs within 100ms with 500 robots
+    # Before 1000 the stack will overflow
+    start = time.time()
+    solver.part_2(patterns, 500)
+    print(time.time() - start)
 
 if __name__ == "__main__":
     main()
