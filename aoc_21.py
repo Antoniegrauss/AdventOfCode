@@ -1,6 +1,174 @@
 from grid import position_distance, add_positions
 from itertools import product
 
+def memoize(func):
+    cache = {}
+    def inner(*args):
+        if args not in cache:
+            cache[args] = func(*args)
+        return cache[args]
+    return inner
+
+class KeypadSolver():
+    def __init__(self) -> None:
+        # numpad: 
+        # NOTE: forbidden position at 1, 3
+        # +---+---+---+
+        # | 7 | 8 | 9 |
+        # +---+---+---+
+        # | 4 | 5 | 6 |
+        # +---+---+---+
+        # | 1 | 2 | 3 |
+        # +---+---+---+
+        #     | 0 | A |
+        #     +---+---+
+        numpad_forbidden_position = (0, 3)
+        self.numpad_positions = {
+            '7': (0, 0),
+            '8': (1, 0),
+            '9': (2, 0),
+            '4': (0, 1),
+            '5': (1, 1),
+            '6': (2, 1),
+            '1': (0, 2),
+            '2': (1, 2),
+            '3': (2, 2),
+            '0': (1, 3),
+            'A': (2, 3)
+        }
+        
+        self.numpad_paths = setup_numpad_paths(self.numpad_positions, numpad_forbidden_position)
+        # print(numpad_paths)
+        
+        # Movepad
+        # NOTE: forbidden position = 0, 0
+        #     +---+---+
+        #     | ^ | A |
+        # +---+---+---+
+        # | < | v | > |
+        # +---+---+---+
+        movepad_forbidden_position = (0, 0)
+        self.movepad_positions = {
+            '^': (1, 0),
+            'A': (2, 0),
+            '<': (0, 1),
+            'v': (1, 1),
+            '>': (2, 1),
+        }
+        # Convert moves to symbols on the movepad
+        # NOTE: A is encoded as standing still (0, 0)
+        self.movepad_lookup = {
+            (0, 1): 'v',
+            (0, -1): '^',
+            (1, 0): '>',
+            (-1, 0): '<',
+            (0, 0): 'A'
+        }
+        self.movepad_lookup_inverse = {
+            'v': (0, 1),
+            '^': (0, -1),
+            '>': (1, 0),
+            '<': (-1, 0),
+            'A': (0, 0)
+        }
+        self.movepad_paths = setup_movepad_paths(movepad_positions, movepad_forbidden_position)
+        
+    def part_2(self, patterns, depth):
+        self.patterns = patterns
+        
+        results = []
+        for pattern in patterns:
+            print("Pattern: ", pattern)
+            input_length = self.handle_pattern(pattern, depth)
+            results.append(input_length * pattern_score(pattern))
+            print(f"Total cost of {pattern}: {results[-1]}")
+            
+        return sum(results)
+            
+    def handle_pattern(self, pattern, depth):
+        # First iteration with keypad
+        depth -= 1
+        numpad_paths = self.get_numpad_paths(pattern=pattern)
+        string_paths = [self.nested_path_to_symbols(path) for path in numpad_paths]
+        
+        # For each character give the total sum
+        total = sum([self.recursive_score(string_path, depth) for string_path in string_paths])
+        return total
+    
+    @memoize
+    def recursive_score(self, path, depth):
+        if depth == 0:
+            return self.total_cost(path)
+        
+        # Expand paths, return min score
+        total = []
+        path_options = path.split(",")
+        for path_option in path_options:
+            start_position = 'A'
+            expanded_paths = self.expand_paths(path_option, start_position)
+            print(f"{path_option} expanded into {expanded_paths}")
+            current_costs = []
+            for expanded_path in expanded_paths:
+                current_costs.append(self.recursive_score(expanded_path, depth-1))
+            total.append(sum(current_costs))
+        return min(total)
+        
+    def total_cost(self, path):
+        press_a_cost = 1
+        options = path.split(",")
+        return len(min(options, key=len)) + press_a_cost
+        
+    def get_numpad_paths(self, pattern):
+        paths = []
+        numpad_current = 'A'
+        for symbol in pattern:
+            path_options = self.numpad_paths[numpad_current, symbol]
+            paths.append(path_options)
+            numpad_current = symbol
+            
+        return paths
+    
+    def move_path_to_symbols(self, positions):
+        return "".join([self.movepad_lookup[position] for position in positions])  
+
+    def nested_path_to_symbols(self, nested_path):
+        return ",".join([self.move_path_to_symbols(path) for path in nested_path])
+
+    def nested_nested_path_to_symbols(self, move_paths):
+        string_paths = ""
+        for move_path_inner in move_paths:
+            string_paths += self.nested_path_to_symbols(move_path_inner)
+            string_paths += "[A]"
+        return string_paths
+    
+    def nested_path_to_string_paths(self, paths):
+        string_paths = []
+        for path in paths:
+            string_path = self.nested_path_to_symbols(path)
+            string = ""
+            for move in string_path:
+                if move != "":
+                    string += move
+            string_paths.append(string)
+        return string_paths
+    
+    def expand_paths(self, symbol_path, start_position):
+        path_options = []
+        for move in symbol_path:
+            path_options.append(find_paths_for_move(start_position, 
+                                                    self.movepad_lookup_inverse[move], 
+                                                    self.movepad_lookup, 
+                                                    self.movepad_paths))
+            start_position = move
+            
+        if start_position == 'A':
+            path_options.append([[]])
+        else:
+            press_a_paths = self.movepad_paths[start_position, 'A']
+            path_options.append(press_a_paths)
+        
+        return self.nested_path_to_string_paths(path_options)
+
 def step(a, b):
     assert position_distance(a, b) == 1
     return (b[0] - a[0], b[1] - a[1])
@@ -91,21 +259,6 @@ def setup_movepad_paths(movepad_positions, forbidden_position):
 def shortest_path(paths):
     return min(paths, key=len)
 
-def move_path_to_symbols(positions, movepad_lookup):
-    return "".join([movepad_lookup[position] for position in positions])  
-
-def nested_path_to_symbols(nested_path, movepad_lookup):
-    return "[" + \
-        ",".join([move_path_to_symbols(path, movepad_lookup) for path in nested_path]) + \
-     "]"
-
-def nested_nested_path_to_symbols(move_paths, movepad_lookup):
-    string_paths = ""
-    for move_path_inner in move_paths:
-        string_paths += nested_path_to_symbols(move_path_inner, movepad_lookup)
-        string_paths += "[A]"
-    return string_paths
-
 def find_paths_for_move(start_position, move, movepad_lookup, movepad_paths):
     if start_position == movepad_lookup[move]:
         # Add empty path
@@ -116,17 +269,14 @@ def get_path_options_movepad(symbol_path, movepad_lookup, movepad_paths, start_p
     path_options = []
     for move in symbol_path:
         path_options.append(find_paths_for_move(start_position, move, movepad_lookup, movepad_paths))
-        # print(f"Move from {start_position} to {movepad_lookup[move]}, paths: \n {nested_nested_path_to_symbols(path_options, movepad_lookup)}")
         start_position = movepad_lookup[move]
         
     if start_position == 'A':
         path_options.append([[]])
     else:
         press_a_paths = movepad_paths[start_position, 'A']
-        # print("Pressing A: ", nested_path_to_symbols(press_a_paths, movepad_lookup))
         path_options.append(press_a_paths)
     
-    # print(f"Total paths: {nested_nested_path_to_symbols(path_options, movepad_lookup)} \n")    
     return path_options
 
 def get_numpad_paths(pattern, numpad_paths):
@@ -135,7 +285,6 @@ def get_numpad_paths(pattern, numpad_paths):
     for symbol in pattern:
         path_options = numpad_paths[numpad_current, symbol]
         paths.append(path_options)
-        # print(f"From {numpad_current} to {symbol}, possible via: \n {path_options}")
         numpad_current = symbol
         
     return paths
@@ -143,7 +292,6 @@ def get_numpad_paths(pattern, numpad_paths):
 def get_robot_paths(input_paths, movepad_lookup, movepad_paths):
     paths = []
     for symbol_paths in input_paths:
-        # print(f"\nRobot 1, moving to symbol {patterns[0][id]}")
         start_position = 'A'
         options_for_this_symbol = [
             get_path_options_movepad(symbol_path, movepad_lookup, movepad_paths, start_position) \
@@ -160,7 +308,6 @@ def best_option_cost(options):
     ]))
 
 def pick_shortest_paths(paths):
-    # print("Picking shortest path")
     scores = []
     
     for path in paths:
@@ -171,43 +318,29 @@ def pick_shortest_paths(paths):
                 best_option = best_option_cost(j)
                 best_options.append(best_option)
             best = min(best_options)
-            # print(f"best option length: {best}")
             this_score += best
         scores.append(this_score)
         
-    # print(f"Scores: {scores}")
     return min(scores)
 
 def calculate_shortest_score_length(scores):
-    # counter = 1
     total_length = 0
     for path in scores:
         total_length += pick_shortest_paths(path)
-        # counter += 1
-        # for id_1, i in enumerate(path):
-        #     for id_2, j in enumerate(i):
-        #         for k in j:
-                    # print(f"{str(counter)}, {str(id_1)}, {str(id_2)}, {nested_nested_path_to_symbols(k, movepad_lookup)}")
-    
     return total_length
 
 def pattern_score(pattern):
-    return int("".join(pattern[:-1]))
+    if pattern[-1] == 'A':
+        return int("".join(pattern[:-1]))
+    else:
+        return int("".join(pattern))
 
 def part_1(pattern, movepad_paths, movepad_lookup, numpad_paths):
     numpad_paths = get_numpad_paths(pattern=pattern, numpad_paths=numpad_paths)      
-    
-    # print(f"Pathing options for first digit on numpad: \n {nested_nested_path_to_symbols(numpad_paths, movepad_lookup)}")
-    
+        
     # Have the first robot execute the paths by pressing on the movepad
     # After each symbol press the A button
     robot_1_paths = get_robot_paths(numpad_paths, movepad_lookup, movepad_paths)
-    # print("Robot 1 paths for digit 1")
-    # counter = 1
-    # for path in robot_1_paths:
-    #     for path_inner in path:
-    #         print(str(counter) + nested_nested_path_to_symbols(path_inner, movepad_lookup))
-    #     counter += 1
     
     robot_2_paths = []
     for path in robot_1_paths:
@@ -217,7 +350,7 @@ def part_1(pattern, movepad_paths, movepad_lookup, numpad_paths):
         robot_2_paths.append(new_robot_2_paths)
         
     shortest_score_length = calculate_shortest_score_length(robot_2_paths)
-    print(shortest_score_length, pattern_score(pattern))
+    # print(shortest_score_length, pattern_score(pattern))
     
     return shortest_score_length * pattern_score(pattern)
 
@@ -250,6 +383,7 @@ def main():
         'A': (2, 3)
     }
     
+    global numpad_paths
     numpad_paths = setup_numpad_paths(numpad_positions, numpad_forbidden_position)
     # print(numpad_paths)
     
@@ -261,6 +395,7 @@ def main():
     # | < | v | > |
     # +---+---+---+
     movepad_forbidden_position = (0, 0)
+    global movepad_positions
     movepad_positions = {
         '^': (1, 0),
         'A': (2, 0),
@@ -270,6 +405,7 @@ def main():
     }
     # Convert moves to symbols on the movepad
     # NOTE: A is encoded as standing still (0, 0)
+    global movepad_lookup
     movepad_lookup = {
         (0, 1): 'v',
         (0, -1): '^',
@@ -277,6 +413,7 @@ def main():
         (-1, 0): '<',
         (0, 0): 'A'
     }
+    global movepad_paths
     movepad_paths = setup_movepad_paths(movepad_positions, movepad_forbidden_position)
     # print(movepad_paths)
     
@@ -289,10 +426,8 @@ def main():
     # Robot 1 is pressing:
     # 029A
     
-    input = open("aoc_24/input/Day21_test.txt").read()
-    patterns = [line.strip("\n") for line in input.split("\n")]
-    for pattern in patterns:
-        print(part_1(pattern, movepad_paths, movepad_lookup, numpad_paths))
+    test_input = open("aoc_24/input/Day21_test.txt").read()
+    test_patterns = [line.strip("\n") for line in test_input.split("\n")]
     
     input = open("aoc_24/input/Day21.txt").read()
     patterns = [line.strip("\n") for line in input.split("\n")]
@@ -301,6 +436,22 @@ def main():
                for pattern in patterns]) == 212488)
     
     # For part 2 we use 25 robots
+    solver = KeypadSolver()
+    # Should be 6 -> ^^A, A -> vvA
+    assert(solver.part_2([['6', 'A']], 1) == 6 * 6)
+    assert(solver.part_2([['9']], 1) == 4 * 9)
+    assert(solver.part_2([['2']], 2) == 9 * 2)
+    
+    assert(solver.part_2([['3']], 2) == 4 * 3)
+    assert(solver.part_2([['3']], 3) == 12 * 3)
+    assert(solver.part_2([['6']], 2) == 5 * 6)
+    assert(solver.part_2([['6']], 3) == 13 * 6)
+    assert(solver.part_2([['0', '2', '9', 'A']], 3) == 68 * 29)
+    
+    assert(solver.part_2(patterns, 3) == 212488)
+    
+    # Somehow part answer must be 1 robot higher than in my implementation
+    assert(solver.part_2(patterns, 26) == 258263972600402)
 
 if __name__ == "__main__":
     main()
