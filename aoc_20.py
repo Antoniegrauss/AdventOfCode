@@ -8,7 +8,7 @@ def check_cheat_possible_with_wall(pathfinder, start, end, wall, is_valid):
     pathfinder.grid.set(wall, "#")
     return len(path)-1
 
-def try_cheat(step, id, path, grid, cheat_time_allowed, min_timesave):
+def try_cheat_bfs(step, id, path, grid, cheat_time_allowed, min_timesave):
     # Do a BFS to see what parts of the path further we can reach within the cheat_time_allowed
     cheat_times = []
     
@@ -40,6 +40,23 @@ def try_cheat(step, id, path, grid, cheat_time_allowed, min_timesave):
         steps = copy.deepcopy(new_steps)
     return cheat_times
 
+# Current path is the path from the cheat position
+# So time save is the amount of path we skip - the cheat length
+def try_cheat_manhattan(current_path, cheat_time_allowed, min_timesave):
+    start = current_path[0]
+    
+    cheat_times = 0
+    cheat_options = current_path[min_timesave:]
+    for cheat in cheat_options:
+        cheat_length = g.position_distance(start, cheat)
+        if cheat_length <= cheat_time_allowed:
+            timesave = current_path.index(cheat) - cheat_length
+            if timesave >= min_timesave:
+                # timesaves.append(timesave)
+                cheat_times += 1
+                
+    return cheat_times
+
 def solution_bfs(grid, start, end, is_valid, cheat_time_allowed, threshold):
     graph = g.network_x_graph(grid, is_valid)
     normal_path = nx.shortest_path(graph, start, end)
@@ -49,7 +66,21 @@ def solution_bfs(grid, start, end, is_valid, cheat_time_allowed, threshold):
     for id, step in enumerate(normal_path):
         if counter % 10 == 0:
             print(f"{counter} of {len(normal_path)}, shortcuts: {cheat_times}")
-        cheat_times += try_cheat(step, id, normal_path, grid, cheat_time_allowed, min_timesave=threshold)
+        cheat_times += try_cheat_bfs(step, id, normal_path, grid, cheat_time_allowed, min_timesave=threshold)
+        counter += 1
+
+    return cheat_times
+    
+def solution_manhattan(grid, start, end, is_valid, cheat_time_allowed, threshold):
+    graph = g.network_x_graph(grid, is_valid)
+    normal_path = nx.shortest_path(graph, start, end)
+
+    cheat_times = 0
+    counter = 0
+    for id, step in enumerate(normal_path):
+        if counter % 10 == 0:
+            print(f"{counter} of {len(normal_path)}, shortcuts: {cheat_times}")
+        cheat_times += try_cheat_manhattan(normal_path[id:], cheat_time_allowed, threshold)
         counter += 1
 
     return cheat_times
@@ -95,7 +126,9 @@ def main():
     # cheat_times = solution_bfs(grid, start, end, is_valid, cheat_time_allowed=20, threshold=50)
     # assert(cheat_times == 285)
     
-    print(solution_bfs(grid, start, end, is_valid, cheat_time_allowed=20, threshold=100))
+    # Manhattan seems more optimized than doing a BFS, since we know the full path
+    # print(solution_bfs(grid, start, end, is_valid, cheat_time_allowed=20, threshold=100))
+    print(solution_manhattan(grid, start, end, is_valid, cheat_time_allowed=20, threshold=100))
 
 if __name__ == "__main__":
     main()

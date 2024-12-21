@@ -11,6 +11,9 @@ def get_neighbours(position):
         (position[0], position[1] - 1),
     ]
     
+def add_positions(a, b):
+    return (a[0] + b[0], a[1] + b[1])
+    
 def get_direction(position_from, position_to):
     # Should be adjacent tiles
     assert(abs(position_from[0] - position_to[0]) + \
