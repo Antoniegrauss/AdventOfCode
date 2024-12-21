@@ -11,59 +11,12 @@ def memoize(func):
     return inner
 
 class KeypadSolver():
-    def __init__(self) -> None:
-        # numpad: 
-        # NOTE: forbidden position at 1, 3
-        # +---+---+---+
-        # | 7 | 8 | 9 |
-        # +---+---+---+
-        # | 4 | 5 | 6 |
-        # +---+---+---+
-        # | 1 | 2 | 3 |
-        # +---+---+---+
-        #     | 0 | A |
-        #     +---+---+
-        numpad_forbidden_position = (0, 3)
-        self.numpad_positions = {
-            '7': (0, 0),
-            '8': (1, 0),
-            '9': (2, 0),
-            '4': (0, 1),
-            '5': (1, 1),
-            '6': (2, 1),
-            '1': (0, 2),
-            '2': (1, 2),
-            '3': (2, 2),
-            '0': (1, 3),
-            'A': (2, 3)
-        }
-        
-        self.numpad_paths = setup_numpad_paths(self.numpad_positions, numpad_forbidden_position)
-        
-        # Movepad
-        # NOTE: forbidden position = 0, 0
-        #     +---+---+
-        #     | ^ | A |
-        # +---+---+---+
-        # | < | v | > |
-        # +---+---+---+
-        movepad_forbidden_position = (0, 0)
-        self.movepad_positions = {
-            '^': (1, 0),
-            'A': (2, 0),
-            '<': (0, 1),
-            'v': (1, 1),
-            '>': (2, 1),
-        }
-        # Convert moves to symbols on the movepad
-        # NOTE: A is encoded as standing still (0, 0)
-        self.movepad_lookup = {
-            (0, 1): 'v',
-            (0, -1): '^',
-            (1, 0): '>',
-            (-1, 0): '<',
-            (0, 0): 'A'
-        }
+    def __init__(self,numpad_positions, numpad_paths, movepad_positions, movepad_paths, movepad_lookup) -> None:
+        self.numpad_positions = numpad_positions
+        self.numpad_paths = numpad_paths
+        self.movepad_positions = movepad_positions
+        self.movepad_paths = movepad_paths
+        self.movepad_lookup = movepad_lookup
         self.movepad_lookup_inverse = {
             'v': (0, 1),
             '^': (0, -1),
@@ -71,7 +24,6 @@ class KeypadSolver():
             '<': (-1, 0),
             'A': (0, 0)
         }
-        self.movepad_paths = setup_movepad_paths(movepad_positions, movepad_forbidden_position)
         
     def part_2(self, patterns, depth):
         self.patterns = patterns
@@ -379,7 +331,7 @@ def main():
         'A': (2, 3)
     }
     
-    global numpad_paths
+    # Precompute all numpad paths
     numpad_paths = setup_numpad_paths(numpad_positions, numpad_forbidden_position)
     
     # Movepad
@@ -390,7 +342,6 @@ def main():
     # | < | v | > |
     # +---+---+---+
     movepad_forbidden_position = (0, 0)
-    global movepad_positions
     movepad_positions = {
         '^': (1, 0),
         'A': (2, 0),
@@ -400,7 +351,6 @@ def main():
     }
     # Convert moves to symbols on the movepad
     # NOTE: A is encoded as standing still (0, 0)
-    global movepad_lookup
     movepad_lookup = {
         (0, 1): 'v',
         (0, -1): '^',
@@ -408,7 +358,6 @@ def main():
         (-1, 0): '<',
         (0, 0): 'A'
     }
-    global movepad_paths
     movepad_paths = setup_movepad_paths(movepad_positions, movepad_forbidden_position)
     
     # You are pressing:
@@ -420,9 +369,6 @@ def main():
     # Robot 1 is pressing:
     # 029A
     
-    test_input = open("aoc_24/input/Day21_test.txt").read()
-    test_patterns = [line.strip("\n") for line in test_input.split("\n")]
-    
     input = open("aoc_24/input/Day21.txt").read()
     patterns = [line.strip("\n") for line in input.split("\n")]
     
@@ -430,7 +376,7 @@ def main():
                for pattern in patterns]) == 212488)
     
     # For part 2 we use 25 robots
-    solver = KeypadSolver()
+    solver = KeypadSolver(numpad_positions, numpad_paths, movepad_positions, movepad_paths, movepad_lookup)
     # Should be 6 -> ^^A, A -> vvA
     assert(solver.part_2([['6', 'A']], 1) == 6 * 6)
     assert(solver.part_2([['9']], 1) == 4 * 9)
