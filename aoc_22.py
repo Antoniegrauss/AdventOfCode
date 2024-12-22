@@ -60,6 +60,23 @@ def get_sequences(price_changes):
     # Remove the first row with zeros before returning
     return sequences[1:, :]
 
+def get_all_sequence_price_dicts(price_change_lists, price_lists):
+    dicts = []
+    for price_list, price_change in zip(price_lists, price_change_lists):
+        dicts.append(get_sequence_price_dict(price_change, price_list))
+    return dicts
+
+def get_sequence_price_dict(price_changes, prices):
+    sequence_price_dict = {}
+    for id, _ in enumerate(price_changes):
+        if id < 4:
+            continue
+        new_sequence = tuple(price_changes[id - 4:id].tolist())
+        if new_sequence not in sequence_price_dict:
+            sequence_price_dict[new_sequence]=prices[id]
+    # Remove the first row with zeros before returning
+    return sequence_price_dict
+
 # Sequences with length 4
 def get_distinct_sequences(price_changes):
     uniques = np.unique(get_sequences(price_changes), axis=0)
@@ -164,30 +181,25 @@ def sequence_profit_multithread(sequence):
         id = first_id_sequence_in_list_cached(sequence, price_change_sequence)
         # Need to check for offset in this sequence finding function
         if id > 0:
-            # Debug prints
-            # print(f"Found {sequence} in list {price_change[id-4:id]}")
-            # print(f"Price changes {price_change[id-4:id]}, corresponds to prices: {price_list[id-4:id+1]}")
-            # Debug assert
-            # assert(price_list[id] - price_list[id-1] == price_change[id-1])
             sum += price_list[id]
     return sum
 
+
+def sequence_profit_multithread_dicts(sequence):
+    sum = 0
+    # print(f"Started sequence: {sequence}")
+    key = tuple(sequence.tolist())
+    for price_dict in globals()['sequence_price_dicts']:
+        sum += price_dict[key] if key in price_dict else 0
+    return sum
+
 def find_best_sum_multithread(sequences):
-    best_sum = 0
     with Pool(10) as pool:
         return max(pool.map(sequence_profit_multithread, sequences))
     
-    # for id, sequence in enumerate(sequences):
-    #     if id % 1 == 0:
-    #         print(f"id: {id} / {len(sequences)}")
-    #     sequence_sum = sequence_profit_multithread(sequence)
-    #     if sequence_sum > best_sum:
-    #         best_sum = sequence_sum
-    #         best_sequence = sequence
-    #         print(f"New best sequence {best_sequence}, sum: {best_sum}")
-            
-    # print(f"Finished, new best sum {best_sum}, from sequence: {best_sequence}")
-    return best_sum
+def find_best_sum_multithread_dicts(sequence):
+    with Pool(10) as pool:
+        return max(pool.map(sequence_profit_multithread_dicts, sequence))
  
 def part_2_multithread(numbers):
     global price_lists
@@ -200,6 +212,18 @@ def part_2_multithread(numbers):
     sequences = sort_sequences_by_last_element(generate_and_prune_sequences(price_changes))
         
     best_sum = find_best_sum_multithread(sequences)
+    print(best_sum)
+    return best_sum
+
+def part_2_multithread_with_dict_lookup(numbers):
+    price_lists = np.array([get_all_last_digits(number) for number in numbers])
+    price_changes = np.array([calculate_change(price_list) for price_list in price_lists])  
+    global sequence_price_dicts
+    sequence_price_dicts = get_all_sequence_price_dicts(price_changes, price_lists)
+     
+    sequences = sort_sequences_by_last_element(generate_and_prune_sequences(price_changes))
+        
+    best_sum = find_best_sum_multithread_dicts(sequences)
     print(best_sum)
     return best_sum
 
@@ -224,24 +248,21 @@ def main():
     
     # test_part_2()
     
-    test_numbers_part_2 = [1, 2, 3, 2024]
-    assert(part_2_multithread(test_numbers_part_2) == 23)
-    
-    # start = time.time()
-    # part_2_multithread(numbers[:10])
-    # print(f"Time for multithreaded 10 monkeys: {time.time() - start}")
-    
-    # start = time.time()
-    # part_2_multithread(numbers[:100])
-    # print(f"Time for multithreaded 100 monkeys: {time.time() - start}")
-      
+    # test_numbers_part_2 = [1, 2, 3, 2024]
+    # assert(part_2_multithread(test_numbers_part_2) == 23)
+    # assert(part_2_multithread_with_dict_lookup(test_numbers_part_2) == 23)
+ 
     start = time.time()
-    result = part_2_multithread(numbers)
-    print(f"Time for full 2000 monkeys: {time.time() - start}")
-    print(result)
-    # start = time.time()
-    # part_2(numbers[:10])
-    # print(f"Time for 10 monkeys: {time.time() - start}")
+    part_2_multithread_with_dict_lookup(numbers[:10])
+    print(f"Time for multithreaded with dict 10 monkeys: {time.time() - start}")
+        
+    start = time.time()
+    part_2_multithread_with_dict_lookup(numbers[:100])
+    print(f"Time for multithreaded with dict 100 monkeys: {time.time() - start}")
+    
+    start = time.time()
+    part_2_multithread_with_dict_lookup(numbers)
+    print(f"Time for multithreaded with dict all 2000 monkeys: {time.time() - start}")
     
 if __name__ == "__main__":
     main()
