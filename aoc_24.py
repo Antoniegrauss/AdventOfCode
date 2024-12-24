@@ -128,12 +128,12 @@ def create_graph(operation_list):
 def print_diagnostics(values_dict):
     x_bits = get_bitstring_for('x', values_dict)
     y_bits = get_bitstring_for('y', values_dict)
-    print(f"X number:\n  {x_bits[:-10]}, {int(x_bits, 2)}")
-    print(f"Y number:\n  {y_bits[:-10]}, {int(y_bits, 2)}")
+    print(f"X number:\n  {x_bits}, {int(x_bits, 2)}")
+    print(f"Y number:\n  {y_bits}, {int(y_bits, 2)}")
     good_result_string = str(bin(int(x_bits, 2) + int(y_bits, 2)))[2:]
-    print(f"Good result:\n {good_result_string[:-10]}, {int(good_result_string, 2)}")
+    print(f"Good result:\n {good_result_string}, {int(good_result_string, 2)}")
     actual_result_string = get_bitstring_for('z', values_dict)
-    print(f"Actual result:\n {actual_result_string[:-10]}, {int(actual_result_string, 2)}")
+    print(f"Actual result:\n {actual_result_string}, {int(actual_result_string, 2)}")
     
     print(f"Good bits: {bit_similarity_score(actual_result_string, good_result_string)} / {len(good_result_string)}")
 
@@ -144,9 +144,17 @@ def reset_all_operations(operation_list):
 def part_2(input):
     variables, operations = input.split("\n\n")
     values_dict = parse_values_dict(variables)
+    
+    # Debugging
+    for i in range(45):
+        num_str = str(i)
+        if i < 10:
+            num_str = '0' + num_str
+        values_dict['x' + num_str] = False
+        values_dict['y' + num_str] = True
         
     operation_list = parse_operations(operations, values_dict)
-    do_all_operations(operation_list)
+    # do_all_operations(operation_list)
     
     combinations = product(operation_list, operation_list)
     print(f"Amount of pairs: {len(list(combinations))}")
@@ -158,6 +166,8 @@ def part_2(input):
     swap_by_name(operations=operation_list, a=('sth', 'bhw', 'z15'), b=('sth', 'bhw', 'htp'))
     swap_by_name(operations=operation_list, a=('qfj', 'mqg', 'z20'), b=('fvm', 'mvv', 'hhh'))
     swap_by_name(operations=operation_list, a=('x05', 'y05', 'z05'), b=('hdc', 'gcs', 'dkr'))
+    swap_by_name(operations=operation_list, a=('x36', 'y36', 'ggk'), b=('x36', 'y36', 'rhv'))
+    print(",".join(sorted(["z15","z20","z05","ggk","htp","hhh","dkr","rhv"])))
 
     reset_all_operations(operation_list)
     do_all_operations(operation_list)

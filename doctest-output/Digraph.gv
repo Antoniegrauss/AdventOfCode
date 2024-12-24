@@ -427,8 +427,8 @@ digraph {
 	vjk -> z22 [label=XOR]
 	x36
 	y36
-	x36 -> ggk [label=AND]
-	y36 -> ggk [label=AND]
+	x36 -> rhv [label=AND]
+	y36 -> rhv [label=AND]
 	x34
 	y34
 	x34 -> tjv [label=XOR]
@@ -923,8 +923,8 @@ digraph {
 	bpg -> jgd [label=AND]
 	y36
 	x36
-	y36 -> rhv [label=XOR]
-	x36 -> rhv [label=XOR]
+	y36 -> ggk [label=XOR]
+	x36 -> ggk [label=XOR]
 	y42
 	x42
 	y42 -> svf [label=XOR]
