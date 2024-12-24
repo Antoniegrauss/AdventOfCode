@@ -1,5 +1,5 @@
 from itertools import product
-
+import graphviz
 class Operation():
     def __init__(self, input_1: str, operation: str, input_2: str, output: str, values_dict) -> None:
         self.input_1 = input_1 
@@ -8,6 +8,9 @@ class Operation():
         self.output = output
         self.values_dict = values_dict
         
+        self.output_value = None
+        
+    def reset(self):
         self.output_value = None
         
     def can_do_operation(self):
@@ -80,8 +83,64 @@ def part_1(input):
 def bit_similarity_score(a, b):
     return sum([int(a_x == b_x) for a_x, b_x in zip(a, b)])
 
-def swap_outputs()
+def swap_outputs(one, other):
+    temp = one.output
+    one.output = other.output
+    other.output = temp
+    
+def swap_by_name(operations, a, b):
+    operation_a = [operation for operation in operations if operation.output == a[2]
+                   and (operation.input_1 == a[0] or operation.input_2 == a[0]) 
+                   and (operation.input_2 == a[1] or operation.input_1 == a[1])][0]
+    operation_b = [operation for operation in operations if operation.output == b[2]
+                   and (operation.input_1 == b[0] or operation.input_2 == b[0]) 
+                   and (operation.input_2 == b[1] or operation.input_1 == b[1])][0]
+    swap_outputs(operation_a, operation_b)
 
+def create_graph(operation_list):
+    graph = graphviz.Digraph()
+    # Make sure the z nodes line up
+    with graph.subgraph() as sub:
+        # sub.attr(rank='same')
+        for i in range(46):
+            if i < 10:
+                i = "0" + str(i)
+            sub.node('z' + str(i), style='filled', fillcolor='#40e0d0')
+    with graph.subgraph() as sub:
+        # sub.attr(rank='same')
+        for i in range(45):
+            if i < 10:
+                i = "0" + str(i)
+            sub.node('x' + str(i), style='filled', fillcolor='#ff000042') 
+    with graph.subgraph() as sub:
+        # sub.attr(rank='same')
+        for i in range(45):
+            if i < 10:
+                i = "0" + str(i)
+            sub.node('y' + str(i), style='filled', fillcolor='deeppink')
+    for operation in operation_list:
+        graph.node(operation.input_1)
+        graph.node(operation.input_2)
+        graph.edge(operation.input_1, operation.output, label=operation.operation)
+        graph.edge(operation.input_2, operation.output, label=operation.operation)
+    return graph
+
+def print_diagnostics(values_dict):
+    x_bits = get_bitstring_for('x', values_dict)
+    y_bits = get_bitstring_for('y', values_dict)
+    print(f"X number:\n  {x_bits[:-10]}, {int(x_bits, 2)}")
+    print(f"Y number:\n  {y_bits[:-10]}, {int(y_bits, 2)}")
+    good_result_string = str(bin(int(x_bits, 2) + int(y_bits, 2)))[2:]
+    print(f"Good result:\n {good_result_string[:-10]}, {int(good_result_string, 2)}")
+    actual_result_string = get_bitstring_for('z', values_dict)
+    print(f"Actual result:\n {actual_result_string[:-10]}, {int(actual_result_string, 2)}")
+    
+    print(f"Good bits: {bit_similarity_score(actual_result_string, good_result_string)} / {len(good_result_string)}")
+
+def reset_all_operations(operation_list):
+    for operation in operation_list:
+        operation.reset()
+    
 def part_2(input):
     variables, operations = input.split("\n\n")
     values_dict = parse_values_dict(variables)
@@ -92,27 +151,42 @@ def part_2(input):
     combinations = product(operation_list, operation_list)
     print(f"Amount of pairs: {len(list(combinations))}")
     
-    x_bits = get_bitstring_for('x', values_dict)
-    y_bits = get_bitstring_for('x', values_dict)
-    print(f"X number:\n {x_bits}, {int(x_bits, 2)}")
-    print(f"Y number:\n {y_bits}, {int(y_bits, 2)}")
-    good_result_string = str(bin(int(x_bits, 2) + int(y_bits, 2)))[2:]
-    print(f"Good result:\n {good_result_string}, {int(good_result_string, 2)}")
-    actual_result_string = get_bitstring_for('z', values_dict)
-    print(f"Actual result:\n {actual_result_string}, {int(actual_result_string, 2)}")
+    # print_diagnostics(values_dict)
     
-    print(f"Good bits: {bit_similarity_score(actual_result_string, good_result_string)} / {len(good_result_string)}")
+    # wrong = ['wtf', 'fjk', 'fck']
+    # wrong_output = ['z39', 'z41', 'z42']
+    swap_by_name(operations=operation_list, a=('sth', 'bhw', 'z15'), b=('sth', 'bhw', 'htp'))
+    swap_by_name(operations=operation_list, a=('qfj', 'mqg', 'z20'), b=('fvm', 'mvv', 'hhh'))
+    swap_by_name(operations=operation_list, a=('x05', 'y05', 'z05'), b=('hdc', 'gcs', 'dkr'))
+
+    reset_all_operations(operation_list)
+    do_all_operations(operation_list)
+
+    graph = create_graph(operation_list)
+    graph.render(directory='doctest-output', engine='dot').replace('\\', '/')
+    print_diagnostics(values_dict)
+    
+    print(f"carry 15 {values_dict['sth']}, x: {values_dict['x15']}, y: {values_dict['y15']}")
+    print(f"z: {values_dict['z16']}, x: {values_dict['x16']}, y: {values_dict['y16']}, carry: {values_dict['mqr']}")
+    print(f"bhw: {values_dict['bhw']}, htp: {values_dict['htp']}")
+    
+    for i in range(13,17):
+        num = str(i)
+        print(f"{num} \nx {int(values_dict['x' + num])}, \ny {int(values_dict['y' + num])}, \nz: {int(values_dict['z' + num])}")
+    
+    # print(values_dict['z02'], values_dict['x02'], values_dict['y02'], values_dict['z01'])
 
 def main():
     print("day 24")
-    test_input = open("aoc_24/input/Day24_test.txt").read()
-    assert(part_1(test_input) == 2024)
+    # test_input = open("aoc_24/input/Day24_test.txt").read()
+    # assert(part_1(test_input) == 2024)
     
-    real_input = open("aoc_24/input/Day24.txt").read()
-    assert(part_1(real_input) == 53755311654662)
+    # real_input = open("aoc_24/input/Day24.txt").read()
+    # assert(part_1(real_input) == 53755311654662)
     # print(values_dict)
     
-    part_2(real_input)
+    mini_input = open("aoc_24/input/Day24.txt").read()
+    part_2(mini_input)
 
 if __name__ == "__main__":
     main()
