@@ -5,6 +5,8 @@
 
 #include "read_file.hpp"
 
+namespace AoC::utils {
+
 std::vector<std::string> read_lines(std::istream& file);
 
 std::ifstream open_file(const std::string& filename) {
@@ -37,4 +39,5 @@ std::vector<std::string> read_lines(std::istream& file) {
 std::vector<std::string> read_input_file(const std::string& filename) {
     std::ifstream file(open_file(filename));
     return read_lines(file);
+}
 }
