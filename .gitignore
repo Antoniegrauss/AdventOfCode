@@ -5,6 +5,9 @@
 # Python
 **/*.pyc
 
+# C++
+**/build/
+
 # Hide puzzle inputs (requested by Advent of Code author)
 **/input/
 **/doctest-output/
