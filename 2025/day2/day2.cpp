@@ -42,18 +42,15 @@ bool is_repeating_with_length(const std::string& input, int pattern_length) {
 
 bool is_id_valid_part2(long id) {
     std::string id_str = std::to_string(id);
-    if (id_str.size() % 2 != 0) {
-        return true;
-    }
 
     // Check repeating patterns
-    for (int pattern_length = 1; pattern_length < id_str.size() / 2; pattern_length++) {
+    for (int pattern_length = 1; pattern_length <= id_str.size() / 2; pattern_length++) {
         if (is_repeating_with_length(id_str, pattern_length)) {
             return false;
         }
     }
 
-    return false;
+    return true;
 }
 
 struct Range {
@@ -137,7 +134,6 @@ void execute_part(std::function<long(std::string)> part_x, std::string file, int
 int main()
 {
     execute_part(part1, "day2.txt", 1);
-    // 1043802083128342 is too high
-    execute_part(part2, "day2test.txt", 2);
+    execute_part(part2, "day2.txt", 2);
     return 0;
 }
