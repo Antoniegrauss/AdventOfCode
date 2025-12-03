@@ -6,4 +6,5 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 add_subdirectory(day1)
 add_subdirectory(day2)
+add_subdirectory(day3)
 add_subdirectory(utils)
