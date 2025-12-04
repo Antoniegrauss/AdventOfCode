@@ -36,8 +36,8 @@ class Grid
         explicit Grid(std::vector<std::string> lines);
 
         bool is_inside_grid(Coordinate2D coord) const {
-            return coord.x > 0 && coord.x < get_width() &&
-                coord.y > 0 && coord.y < get_height();
+            return coord.x >= 0 && coord.x < get_width() &&
+                coord.y >= 0 && coord.y < get_height();
         }
 
         Cell get_cell(Coordinate2D coord) const
@@ -46,11 +46,16 @@ class Grid
             return cells[coord.y][coord.x];
         }
 
+        void set_cell(Coordinate2D coord, char new_value) {
+            cells[coord.y][coord.x].content = new_value;
+        }
+
         std::vector<Cell> get_neighbours(Coordinate2D coord, NeighbourType neighbour_type) const
         {
             std::vector<Cell> neighbour_cells = {};
-            for (Coordinate2D coord : coord.get_neighbours(neighbour_type)) {
-                neighbour_cells.emplace_back(get_cell(coord));
+            for (Coordinate2D neighbour : coord.get_neighbours(neighbour_type)) {
+                if (!is_inside_grid(neighbour)) continue;
+                neighbour_cells.emplace_back(get_cell(neighbour));
             }
             return neighbour_cells;
         }
@@ -67,7 +72,12 @@ class Grid
             return cells.size();
         }
 
+        const std::vector<Coordinate2D>& get_all_coords() const {
+            return all_coords;
+        }
+
     private:
         std::vector<std::vector<Cell>> cells;
+        std::vector<Coordinate2D> all_coords;
     };
 }

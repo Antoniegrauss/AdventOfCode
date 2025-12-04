@@ -44,6 +44,7 @@ namespace AoC::utils {
             std::vector<Cell> row = {};
             for (int x = 0; x < lines[y].size(); x++) {
                 row.emplace_back(Cell(lines[y][x], Coordinate2D(x, y)));
+                all_coords.emplace_back(Coordinate2D(x, y));
             }
             cells.emplace_back(row);
         }
