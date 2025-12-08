@@ -5,33 +5,46 @@
 #include <functional>
 #include <cctype>
 #include <set>
+#include <sstream>
 #include <cassert>
 #include <algorithm>
 #include <cmath>
 #include <numeric>
+#include <queue>
 
 #include "read_file.hpp"
 
 struct Coordinate;
 using Network = std::set<Coordinate>;
 using Networks = std::vector<Network>;
+std::vector<int> network_sizes(const Networks &networks);
+std::vector<int> network_ids(const Network &network);
 struct Coordinate
 {
     int x, y, z;
+    int id;
+    std::vector<int> connections;
 
     long distance_squared_to(const Coordinate &other) const
     {
-        return (other.x - x) * (other.x - x) +
-               (other.y - y) * (other.y - y) +
-               (other.z - z) * (other.z - z);
+        return ((long)other.x - (long)x) * ((long)other.x - (long)x) +
+               ((long)other.y - (long)y) * ((long)other.y - (long)y) +
+               ((long)other.z - (long)z) * ((long)other.z - (long)z);
     }
 
     Coordinate(std::string line)
     {
+        static int id_counter = 0;
+        id = id_counter;
+        id_counter++;
         auto parts = AoC::utils::split_by_delimiter(line, ',');
         x = std::stoi(parts[0]);
         y = std::stoi(parts[1]);
         z = std::stoi(parts[2]);
+    }
+
+    void add_connection(int connection) {
+        connections.emplace_back(connection);
     }
 
     friend bool operator==(const Coordinate &one, const Coordinate &other) noexcept
@@ -61,10 +74,10 @@ struct Coordinate
 
 struct Pair
 {
-    Coordinate one, other;
+    int one, other;
     long distance_sq;
 
-    Pair(Coordinate one, Coordinate other) : one(one), other(other)
+    Pair(Coordinate one, Coordinate other) : one(one.id), other(other.id)
     {
         distance_sq = one.distance_squared_to(other);
     }
@@ -81,42 +94,18 @@ struct Pair
     }
 };
 
-Networks merge_networks(const Networks &networks)
+std::string ids_of_network(const Network &network)
 {
-    Networks all_merged = {};
-    std::vector<int> to_skip = {};
-
-    for (int i = 0; i < networks.size(); i++)
+    std::stringstream ss;
+    auto ids = network_ids(network);
+    for (int id : ids)
     {
-        Network current = networks[i];
-        // If this network is already swallowed up, skip it
-        auto should_skip = std::find(to_skip.begin(), to_skip.end(), i);
-        if (should_skip != to_skip.end())
-            continue;
-        for (int j = i + 1; j < networks.size(); j++)
-        {
-            Network next = networks[j];
-            Network intersection;
-            std::set_intersection(
-                current.begin(), current.end(),
-                next.begin(), next.end(),
-                std::inserter(intersection, intersection.begin()));
-            if (!intersection.empty())
-            {
-                // Insert coord from next into current
-                for (const Coordinate &coord : next)
-                {
-                    current.insert(coord);
-                }
-                to_skip.emplace_back(j);
-            }
-        }
-        all_merged.emplace_back(current);
+        ss << id << ",";
     }
-    return all_merged;
+    return ss.str();
 }
 
-int multiply_largest_3_network_sizes(const Networks &networks)
+std::vector<int> network_sizes(const Networks &networks)
 {
     std::vector<int> network_sizes;
     std::transform(networks.begin(), networks.end(),
@@ -125,43 +114,36 @@ int multiply_largest_3_network_sizes(const Networks &networks)
                    {
                        return net.size();
                    });
+    return network_sizes;
+}
 
-    std::sort(network_sizes.rbegin(), network_sizes.rend());
-    return std::accumulate(network_sizes.begin(), network_sizes.begin() + 3,
+std::vector<int> network_ids(const Network &network)
+{
+    std::vector<int> network_ids;
+    std::transform(network.begin(), network.end(),
+                   std::back_inserter(network_ids),
+                   [](const Coordinate &coord)
+                   {
+                       return coord.id;
+                   });
+    std::sort(network_ids.begin(), network_ids.end());
+    return network_ids;
+}
+
+int multiply_largest_3_network_sizes(std::vector<int> &sizes)
+{
+    std::sort(sizes.rbegin(), sizes.rend());
+    return std::accumulate(sizes.begin(), sizes.begin() + 3,
                            1, std::multiplies<int>());
 }
 
-Networks connect_pair(Networks &networks, const Pair &pair)
+void connect_pair(const Pair &pair, std::vector<Coordinate>& coords)
 {
-    bool found = false;
-    for (Network &network : networks)
-    {
-        if (found)
-            break;
-        if (network.find(pair.one) != network.end())
-        {
-            network.insert(pair.other);
-            found = true;
-            continue;
-        }
-        if (network.find(pair.other) != network.end())
-        {
-            network.insert(pair.one);
-            found = true;
-            continue;
-        }
-    }
-    // If both coordinates are not in a network yet, add them
-    if (!found)
-    {
-        networks.emplace_back(Network{pair.one, pair.other});
-    }
-
-    networks = merge_networks(networks);
-    return networks;
+    coords[pair.one].add_connection(pair.other);
+    coords[pair.other].add_connection(pair.one);
 }
 
-std::vector<Pair> generate_pairs(const std::vector<Coordinate> &coords)
+std::vector<Pair> generate_pairs(std::vector<Coordinate> &coords)
 {
     std::vector<Pair> pairs;
     for (int i = 0; i < coords.size(); i++)
@@ -172,6 +154,33 @@ std::vector<Pair> generate_pairs(const std::vector<Coordinate> &coords)
         }
     }
     return pairs;
+}
+
+std::vector<int> bfs_find_network_sizes(const std::vector<Coordinate>& coords) {
+    std::set<int> visited;
+    std::vector<int> network_sizes;
+
+    for (int i = 0; i < coords.size(); i++) {
+        if (visited.find(i) != visited.end()) continue;
+
+        visited.insert(i);
+        int network_size_counter = 1;
+        std::queue<int> queue;
+        queue.push(coords[i].id);
+        while (!queue.empty()) {
+            int next = queue.front();
+            queue.pop();
+            for (int connection : coords[next].connections) {
+                if (visited.find(connection) == visited.end()) {
+                    queue.push(connection);
+                    network_size_counter ++;
+                    visited.insert(connection);
+                }
+            }
+        }
+        network_sizes.emplace_back(network_size_counter);
+    }
+    return network_sizes;
 }
 
 long part1(std::string filename)
@@ -190,19 +199,16 @@ long part1(std::string filename)
     std::sort(pairs.begin(), pairs.end());
 
     // Connect the first 1000 pairs
-    Networks networks;
     for (int i = 0; i < 1000; i++)
     {
-        networks = connect_pair(networks, pairs[i]);
+        connect_pair(pairs[i], coords);
     }
 
-    for (const Network &network : networks)
-    {
-        std::cout << "Size of network: " << network.size() << std::endl;
-    }
+    // BFS to find network sizes
+    auto network_sizes = bfs_find_network_sizes(coords);
 
     // Find the 3 larges network sizes combined
-    return multiply_largest_3_network_sizes(networks);
+    return multiply_largest_3_network_sizes(network_sizes);
 }
 
 long part2(std::string filename)
@@ -220,6 +226,7 @@ void execute_part(std::function<long(std::string)> part_x, std::string file, int
 int main()
 {
     // 33348 is too low
+    // 79560 should be correct
     execute_part(part1, "day8.txt", 1);
     execute_part(part2, "day8.txt", 2);
     return 0;
