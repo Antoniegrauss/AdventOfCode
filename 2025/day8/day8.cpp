@@ -116,7 +116,7 @@ Networks merge_networks(const Networks &networks)
     return all_merged;
 }
 
-int sum_largest_3_network_sizes(const Networks &networks)
+int multiply_largest_3_network_sizes(const Networks &networks)
 {
     std::vector<int> network_sizes;
     std::transform(networks.begin(), networks.end(),
@@ -127,7 +127,8 @@ int sum_largest_3_network_sizes(const Networks &networks)
                    });
 
     std::sort(network_sizes.rbegin(), network_sizes.rend());
-    return std::accumulate(network_sizes.begin(), network_sizes.begin() + 3, 0);
+    return std::accumulate(network_sizes.begin(), network_sizes.begin() + 3,
+                           1, std::multiplies<int>());
 }
 
 Networks connect_pair(Networks &networks, const Pair &pair)
@@ -160,7 +161,8 @@ Networks connect_pair(Networks &networks, const Pair &pair)
     return networks;
 }
 
-std::vector<Pair> generate_pairs(const std::vector<Coordinate>& coords) {
+std::vector<Pair> generate_pairs(const std::vector<Coordinate> &coords)
+{
     std::vector<Pair> pairs;
     for (int i = 0; i < coords.size(); i++)
     {
@@ -189,7 +191,7 @@ long part1(std::string filename)
 
     // Connect the first 1000 pairs
     Networks networks;
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < 1000; i++)
     {
         networks = connect_pair(networks, pairs[i]);
     }
@@ -200,7 +202,7 @@ long part1(std::string filename)
     }
 
     // Find the 3 larges network sizes combined
-    return sum_largest_3_network_sizes(networks);
+    return multiply_largest_3_network_sizes(networks);
 }
 
 long part2(std::string filename)
@@ -217,6 +219,7 @@ void execute_part(std::function<long(std::string)> part_x, std::string file, int
 
 int main()
 {
+    // 33348 is too low
     execute_part(part1, "day8.txt", 1);
     execute_part(part2, "day8.txt", 2);
     return 0;
