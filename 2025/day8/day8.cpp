@@ -8,6 +8,7 @@
 #include <cassert>
 #include <algorithm>
 #include <cmath>
+#include <numeric>
 
 #include "read_file.hpp"
 
@@ -40,14 +41,18 @@ struct Coordinate
                one.z == other.z;
     }
 
-    bool operator<(Coordinate other) const {
-        if (x != other.x) {
+    bool operator<(Coordinate other) const
+    {
+        if (x != other.x)
+        {
             return x < other.x;
         }
-        if (y != other.y) {
+        if (y != other.y)
+        {
             return y < other.y;
         }
-        if (z != other.z) {
+        if (z != other.z)
+        {
             return z < other.z;
         }
         return false;
@@ -86,18 +91,21 @@ Networks merge_networks(const Networks &networks)
         Network current = networks[i];
         // If this network is already swallowed up, skip it
         auto should_skip = std::find(to_skip.begin(), to_skip.end(), i);
-        if (should_skip != to_skip.end()) continue;
+        if (should_skip != to_skip.end())
+            continue;
         for (int j = i + 1; j < networks.size(); j++)
         {
             Network next = networks[j];
             Network intersection;
             std::set_intersection(
-                current.begin(), current.end(), 
-                next.begin(), next.end(), 
+                current.begin(), current.end(),
+                next.begin(), next.end(),
                 std::inserter(intersection, intersection.begin()));
-            if (!intersection.empty()) {
+            if (!intersection.empty())
+            {
                 // Insert coord from next into current
-                for (const Coordinate& coord : next) {
+                for (const Coordinate &coord : next)
+                {
                     current.insert(coord);
                 }
                 to_skip.emplace_back(j);
@@ -106,6 +114,62 @@ Networks merge_networks(const Networks &networks)
         all_merged.emplace_back(current);
     }
     return all_merged;
+}
+
+int sum_largest_3_network_sizes(const Networks &networks)
+{
+    std::vector<int> network_sizes;
+    std::transform(networks.begin(), networks.end(),
+                   std::back_inserter(network_sizes),
+                   [](const Network &net)
+                   {
+                       return net.size();
+                   });
+
+    std::sort(network_sizes.rbegin(), network_sizes.rend());
+    return std::accumulate(network_sizes.begin(), network_sizes.begin() + 3, 0);
+}
+
+Networks connect_pair(Networks &networks, const Pair &pair)
+{
+    bool found = false;
+    for (Network &network : networks)
+    {
+        if (found)
+            break;
+        if (network.find(pair.one) != network.end())
+        {
+            network.insert(pair.other);
+            found = true;
+            continue;
+        }
+        if (network.find(pair.other) != network.end())
+        {
+            network.insert(pair.one);
+            found = true;
+            continue;
+        }
+    }
+    // If both coordinates are not in a network yet, add them
+    if (!found)
+    {
+        networks.emplace_back(Network{pair.one, pair.other});
+    }
+
+    networks = merge_networks(networks);
+    return networks;
+}
+
+std::vector<Pair> generate_pairs(const std::vector<Coordinate>& coords) {
+    std::vector<Pair> pairs;
+    for (int i = 0; i < coords.size(); i++)
+    {
+        for (int j = i + 1; j < coords.size(); j++)
+        {
+            pairs.emplace_back(Pair(coords[i], coords[j]));
+        }
+    }
+    return pairs;
 }
 
 long part1(std::string filename)
@@ -118,54 +182,25 @@ long part1(std::string filename)
     }
 
     // Generate all pairs
-    std::vector<Pair> pairs = {};
-    for (int i = 0; i < coords.size(); i++)
-    {
-        for (int j = i + 1; j < coords.size(); j++)
-        {
-            pairs.emplace_back(Pair(coords[i], coords[j]));
-        }
-    }
+    std::vector<Pair> pairs = generate_pairs(coords);
 
     // Sort by distance squared
     std::sort(pairs.begin(), pairs.end());
 
     // Connect the first 1000 pairs
     Networks networks;
-    for (int i = 0; i < 1000; i++)
+    for (int i = 0; i < 10; i++)
     {
-        bool found = false;
-        for (std::set<Coordinate> &network : networks)
-        {
-            if (found)
-                break;
-            if (network.find(pairs[i].one) != network.end())
-            {
-                network.insert(pairs[i].other);
-                found = true;
-                continue;
-            }
-            if (network.find(pairs[i].other) != network.end())
-            {
-                network.insert(pairs[i].one);
-                found = true;
-                continue;
-            }
-        }
-        // If both coordinates are not in a network yet, add them
-        if (!found)
-        {
-            std::set<Coordinate> new_network = {pairs[i].one, pairs[i].other};
-        }
-
-        networks = merge_networks(networks);
+        networks = connect_pair(networks, pairs[i]);
     }
 
-    for (const Network& network : networks) {
+    for (const Network &network : networks)
+    {
         std::cout << "Size of network: " << network.size() << std::endl;
     }
 
-    return 0;
+    // Find the 3 larges network sizes combined
+    return sum_largest_3_network_sizes(networks);
 }
 
 long part2(std::string filename)
