@@ -49,7 +49,7 @@ long part1(std::string filename)
 struct Beam
 {
     int position;
-    int amount;
+    long amount;
 };
 
 long part2(std::string filename)
@@ -69,7 +69,19 @@ long part2(std::string filename)
         {
             if (current_line[beam.position] == '.')
             {
-                new_beams.emplace_back(beam);
+                bool found = false;
+                for (Beam &new_beam : new_beams)
+                {
+                    if (new_beam.position == beam.position)
+                    {
+                        new_beam.amount += beam.amount;
+                        found = true;
+                    }
+                }
+                if (!found)
+                {
+                    new_beams.emplace_back(beam);
+                }
                 continue;
             }
             if (current_line[beam.position] == '^')
@@ -85,12 +97,12 @@ long part2(std::string filename)
                     if (new_beam.position == beam.position + 1)
                     {
                         found_right = true;
-                        new_beam.amount += 1;
+                        new_beam.amount += beam.amount;
                     }
                     if (new_beam.position == beam.position - 1)
                     {
                         found_left = true;
-                        new_beam.amount += 1;
+                        new_beam.amount += beam.amount;
                     }
                 }
                 if (!found_right)
@@ -107,13 +119,6 @@ long part2(std::string filename)
             assert(false);
         }
         beams = new_beams;
-
-        long sum = 0;
-        for (const Beam &beam : beams)
-        {
-            sum += beam.amount;
-        }
-        std::cout << "Sum of row " << line_id << " : " << sum << std::endl;
     }
 
     long sum = 0;
@@ -134,6 +139,6 @@ void execute_part(std::function<long(std::string)> part_x, std::string file, int
 int main()
 {
     execute_part(part1, "day7.txt", 1);
-    execute_part(part2, "day7test.txt", 2);
+    execute_part(part2, "day7.txt", 2);
     return 0;
 }
