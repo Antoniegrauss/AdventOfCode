@@ -15,10 +15,10 @@
 #include "read_file.hpp"
 
 struct Coordinate;
-using Network = std::set<Coordinate>;
-using Networks = std::vector<Network>;
-std::vector<int> network_sizes(const Networks &networks);
-std::vector<int> network_ids(const Network &network);
+struct Pair;
+bool binary_search_one_step(long connections,
+                            const std::vector<Coordinate> &original_coords,
+                            const std::vector<Pair> &pairs);
 struct Coordinate
 {
     int x, y, z;
@@ -32,18 +32,16 @@ struct Coordinate
                ((long)other.z - (long)z) * ((long)other.z - (long)z);
     }
 
-    Coordinate(std::string line)
+    Coordinate(std::string line, int id) : id(id)
     {
-        static int id_counter = 0;
-        id = id_counter;
-        id_counter++;
         auto parts = AoC::utils::split_by_delimiter(line, ',');
         x = std::stoi(parts[0]);
         y = std::stoi(parts[1]);
         z = std::stoi(parts[2]);
     }
 
-    void add_connection(int connection) {
+    void add_connection(int connection)
+    {
         connections.emplace_back(connection);
     }
 
@@ -94,42 +92,6 @@ struct Pair
     }
 };
 
-std::string ids_of_network(const Network &network)
-{
-    std::stringstream ss;
-    auto ids = network_ids(network);
-    for (int id : ids)
-    {
-        ss << id << ",";
-    }
-    return ss.str();
-}
-
-std::vector<int> network_sizes(const Networks &networks)
-{
-    std::vector<int> network_sizes;
-    std::transform(networks.begin(), networks.end(),
-                   std::back_inserter(network_sizes),
-                   [](const Network &net)
-                   {
-                       return net.size();
-                   });
-    return network_sizes;
-}
-
-std::vector<int> network_ids(const Network &network)
-{
-    std::vector<int> network_ids;
-    std::transform(network.begin(), network.end(),
-                   std::back_inserter(network_ids),
-                   [](const Coordinate &coord)
-                   {
-                       return coord.id;
-                   });
-    std::sort(network_ids.begin(), network_ids.end());
-    return network_ids;
-}
-
 int multiply_largest_3_network_sizes(std::vector<int> &sizes)
 {
     std::sort(sizes.rbegin(), sizes.rend());
@@ -137,7 +99,7 @@ int multiply_largest_3_network_sizes(std::vector<int> &sizes)
                            1, std::multiplies<int>());
 }
 
-void connect_pair(const Pair &pair, std::vector<Coordinate>& coords)
+void connect_pair(const Pair &pair, std::vector<Coordinate> &coords)
 {
     coords[pair.one].add_connection(pair.other);
     coords[pair.other].add_connection(pair.one);
@@ -156,24 +118,30 @@ std::vector<Pair> generate_pairs(std::vector<Coordinate> &coords)
     return pairs;
 }
 
-std::vector<int> bfs_find_network_sizes(const std::vector<Coordinate>& coords) {
+std::vector<int> bfs_find_network_sizes(const std::vector<Coordinate> &coords)
+{
     std::set<int> visited;
     std::vector<int> network_sizes;
 
-    for (int i = 0; i < coords.size(); i++) {
-        if (visited.find(i) != visited.end()) continue;
+    for (int i = 0; i < coords.size(); i++)
+    {
+        if (visited.find(i) != visited.end())
+            continue;
 
         visited.insert(i);
         int network_size_counter = 1;
         std::queue<int> queue;
         queue.push(coords[i].id);
-        while (!queue.empty()) {
+        while (!queue.empty())
+        {
             int next = queue.front();
             queue.pop();
-            for (int connection : coords[next].connections) {
-                if (visited.find(connection) == visited.end()) {
+            for (int connection : coords[next].connections)
+            {
+                if (visited.find(connection) == visited.end())
+                {
                     queue.push(connection);
-                    network_size_counter ++;
+                    network_size_counter++;
                     visited.insert(connection);
                 }
             }
@@ -183,14 +151,56 @@ std::vector<int> bfs_find_network_sizes(const std::vector<Coordinate>& coords) {
     return network_sizes;
 }
 
-long part1(std::string filename)
+bool all_nodes_in_one_network(const std::vector<Coordinate> &coords)
+{
+    std::set<int> visited;
+    std::vector<int> network_sizes;
+
+    for (int i = 0; i < coords.size(); i++)
+    {
+        if (visited.find(i) != visited.end())
+            continue;
+
+        visited.insert(i);
+        int network_size_counter = 1;
+        std::queue<int> queue;
+        queue.push(coords[i].id);
+        while (!queue.empty())
+        {
+            int next = queue.front();
+            queue.pop();
+            for (int connection : coords[next].connections)
+            {
+                if (visited.find(connection) == visited.end())
+                {
+                    queue.push(connection);
+                    network_size_counter++;
+                    visited.insert(connection);
+                }
+            }
+        }
+        return network_size_counter == coords.size();
+    }
+    // Should never come here
+    assert(false);
+}
+
+std::vector<Coordinate> create_coords(std::string filename)
 {
     auto lines = AoC::utils::read_input_file(filename);
     std::vector<Coordinate> coords = {};
+    int id = 0;
     for (std::string line : lines)
     {
-        coords.emplace_back(Coordinate(line));
+        coords.emplace_back(Coordinate(line, id));
+        id += 1;
     }
+    return coords;
+}
+
+long part1(std::string filename)
+{
+    std::vector<Coordinate> coords = create_coords(filename);
 
     // Generate all pairs
     std::vector<Pair> pairs = generate_pairs(coords);
@@ -211,10 +221,73 @@ long part1(std::string filename)
     return multiply_largest_3_network_sizes(network_sizes);
 }
 
+long binary_search_all_nodes_connected(const std::vector<Coordinate> &coords,
+                                       const std::vector<Pair> &pairs)
+{
+    bool prev_result = false;
+    long left = 0;
+    long right = pairs.size() - 1;
+
+    while (true)
+    {
+        long middle = left + ((right - left) / 2);
+        if (binary_search_one_step(middle, coords, pairs))
+        {
+            std::cout << middle << " is a hit" << std::endl;
+            right = middle - 1;
+
+            if (right < left)
+            {
+                return middle;
+            }
+        }
+        else
+        {
+            std::cout << middle << " is a miss" << std::endl;
+            left = middle + 1;
+        }
+    }
+}
+
+bool binary_search_one_step(long connections,
+                            const std::vector<Coordinate> &original_coords,
+                            const std::vector<Pair> &pairs)
+{
+    auto coords = original_coords;
+
+    // Connect the first x pairs
+    for (int i = 0; i < connections; i++)
+    {
+        connect_pair(pairs[i], coords);
+    }
+
+    // BFS to find network sizes
+    return all_nodes_in_one_network(coords);
+}
+
+long part2_score(long pair_id,
+                 const std::vector<Coordinate> &coords,
+                 const std::vector<Pair> &pairs)
+{
+    return coords[pairs[pair_id].one].x * coords[pairs[pair_id].other].x;
+}
+
 long part2(std::string filename)
 {
-    auto lines = AoC::utils::read_input_file(filename);
-    return 0;
+    std::vector<Coordinate> coords = create_coords(filename);
+
+    // Generate all pairs
+    std::vector<Pair> pairs = generate_pairs(coords);
+
+    // Sort by distance squared
+    std::sort(pairs.begin(), pairs.end());
+
+    // Do a binary search for when everything is connected
+    long guess = binary_search_all_nodes_connected(coords, pairs);
+
+    // Multiply the x coordinates of the last connection needed to form 1 network
+    const int OFF_BY_ONE_ERROR = 1;
+    return part2_score(guess - OFF_BY_ONE_ERROR, coords, pairs);
 }
 
 void execute_part(std::function<long(std::string)> part_x, std::string file, int part_number)
