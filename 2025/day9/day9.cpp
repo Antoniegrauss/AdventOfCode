@@ -81,6 +81,14 @@ struct Coordinate
     }
 
     Coordinate move_in_direction(Direction direction) const;
+
+    long distance(const Coordinate& other) const {
+        return abs(x - other.x) + abs(y - other.y);
+    }
+
+    bool operator==(const Coordinate& other) const {
+        return x == other.x && y == other.y;
+    }
 };
 
 static Coordinate UP{0, -1};
@@ -108,9 +116,9 @@ Direction find_direction(const Coordinate &start, const Coordinate &end)
     if (start.x == end.x)
     {
         if (end.y > start.y)
-            return Direction::Up;
-        if (start.y > end.y)
             return Direction::Down;
+        if (start.y > end.y)
+            return Direction::Up;
         // Is same coord!
         assert(false);
     }
@@ -184,14 +192,19 @@ std::vector<Coordinate> find_outside_coords(const std::vector<Coordinate> &coord
     for (int i = 0; i < coords.size() - 1; i++)
     {
         Direction line_direction = find_direction(coords[i], coords[i + 1]);
-        Coordinate first_of_line = coords[i].move_in_direction(line_direction);
-        if (right_side)
-        {
-            outside_coords.emplace_back(first_of_line.move_in_direction(relative_right(line_direction)));
-        }
-        if (left_side)
-        {
-            outside_coords.emplace_back(first_of_line.move_in_direction(relative_left(line_direction)));
+        // Add the whole outer line to the outside coords
+        long line_dist = coords[i].distance(coords[i+1]);
+        Coordinate coord_on_line = coords[i];
+        for (int dist = 1; dist < line_dist; dist++ ) {
+            coord_on_line = coord_on_line.move_in_direction(line_direction);
+            if (right_side)
+            {
+                outside_coords.emplace_back(coord_on_line.move_in_direction(relative_right(line_direction)));
+            }
+            if (left_side)
+            {
+                outside_coords.emplace_back(coord_on_line.move_in_direction(relative_left(line_direction)));
+            }
         }
     }
     return outside_coords;
@@ -201,6 +214,8 @@ long part2(std::string filename)
 {
     auto lines = AoC::utils::read_input_file(filename);
     auto coordinates = parse_input(lines);
+    // Add the first coordinate to the end to connect the last element back to the start
+    coordinates.emplace_back(coordinates[0]);
 
     // Run along the lines,                   v
     // for each line, take the first step -> #XXXXXX#
@@ -208,27 +223,35 @@ long part2(std::string filename)
     //     O (outside)
     //    #XXXXXXXX#
     //     I (inside)
-    bool right_is_outside = true;
-    bool left_is_outside = false;
+    bool right_is_outside = false;
+    bool left_is_outside = true;
     auto outside_coords = find_outside_coords(coordinates, right_is_outside, left_is_outside);
 
     // For each rectangle coordinate pair check whether any O coords are inside
     // if so, reject this one
     long max_area = 0;
+    std::vector<long> valid_areas = {};
+    // Remove the duplicate start again
+    coordinates.pop_back();
     for (int i = 0; i < coordinates.size(); i++)
     {
+        std::cout << i << " of " << coordinates.size() - 1 << std::endl;
         for (int j = i + 1; j < coordinates.size(); j++)
         {
             bool valid_rectangle = true;
-            for (const Coordinate& outside_coord : outside_coords) {
-                if (is_inside_rectange(outside_coord, coordinates[i], coordinates[j])) {
+            for (const Coordinate &outside_coord : outside_coords)
+            {
+                if (is_inside_rectange(outside_coord, coordinates[i], coordinates[j]))
+                {
                     valid_rectangle = false;
                     break;
                 }
             }
-            if (!valid_rectangle) continue;
+            if (!valid_rectangle)
+                continue;
 
             long rectangle_area = calculate_rectangle_area(coordinates[i], coordinates[j]);
+            valid_areas.emplace_back(rectangle_area);
             if (rectangle_area > max_area)
             {
                 max_area = rectangle_area;
@@ -236,7 +259,9 @@ long part2(std::string filename)
         }
     }
 
-    return 0;
+    std::sort(valid_areas.rbegin(), valid_areas.rend());
+
+    return max_area;
 }
 
 void execute_part(std::function<long(std::string)> part_x, std::string file, int part_number)
@@ -247,8 +272,8 @@ void execute_part(std::function<long(std::string)> part_x, std::string file, int
 
 int main()
 {
-    // 4777678192 is too low
     execute_part(part1, "day9.txt", 1);
-    execute_part(part2, "day9test.txt", 2);
+    // Note: have to guess whether left or right is the outside of the circuit
+    execute_part(part2, "day9.txt", 2);
     return 0;
 }
