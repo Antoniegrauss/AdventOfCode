@@ -320,7 +320,7 @@ long solve_problem_part_2(std::string line)
             {
                 Result result = problem.check_sequence_part_2(sequence, option);
                 if (result == Result::Succeeded) {
-                    return sequence.size();
+                    return sequence.size() + 1;
                 }
                 if (result == Result::Failed) continue;
                 
