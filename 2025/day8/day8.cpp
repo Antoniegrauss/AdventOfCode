@@ -298,8 +298,6 @@ void execute_part(std::function<long(std::string)> part_x, std::string file, int
 
 int main()
 {
-    // 33348 is too low
-    // 79560 should be correct
     execute_part(part1, "day8.txt", 1);
     execute_part(part2, "day8.txt", 2);
     return 0;
