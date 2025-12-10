@@ -25,6 +25,10 @@ struct Problem
     // Pattern to match
     std::vector<bool> answer;
 
+    // Part 2 patter to match
+    std::vector<int> current_joltage;
+    std::vector<int> joltage_answer;
+
     Problem(std::string line)
     {
         auto parts = AoC::utils::split_by_delimiter(line, ' ');
@@ -49,6 +53,17 @@ struct Problem
             }
             buttons.emplace_back(new_button);
         }
+
+        auto joltages = AoC::utils::split_by_delimiter(parts.back(), ',');
+        for (std::string joltage : joltages) {
+            bool skip = false;
+            for (char c : joltage) {
+                if (!isdigit(c)) skip = true;
+            }
+            if (skip) continue;
+            joltage_answer.emplace_back(stoi(joltage));
+            current_joltage.emplace_back(0);
+        }
     }
 
     void press_button(int button_id)
@@ -56,6 +71,14 @@ struct Problem
         for (int light_id : buttons[button_id])
         {
             lights[light_id] = !lights[light_id];
+        }
+    }
+
+    void press_button_part_2(int button_id)
+    {
+        for (int joltage_id : buttons[button_id])
+        {
+            current_joltage[joltage_id] += 1;
         }
     }
 
@@ -69,6 +92,16 @@ struct Problem
         return is_done();
     }
 
+    bool check_sequence_part_2(const std::vector<int> &button_ids)
+    {
+        reset_joltage();
+        for (int button_id : button_ids)
+        {
+            press_button_part_2(button_id);
+        }
+        return current_joltage == joltage_answer;
+    }
+
     bool is_done() const
     {
         return lights == answer;
@@ -77,6 +110,10 @@ struct Problem
     void reset()
     {
         std::fill(lights.begin(), lights.end(), false);
+    }
+
+    void reset_joltage() {
+        std::fill(current_joltage.begin(), current_joltage.end(), 0);
     }
 };
 
@@ -123,6 +160,34 @@ long solve_problem_part_1(std::string line)
     return 0;
 }
 
+long solve_problem_part_2(std::string line)
+{
+    Problem problem(line);
+
+    long button_presses = 0;
+
+    // Generate all combinations of button presses
+    int options = problem.buttons.size();
+    std::vector<std::vector<int>> sequences;
+    for (int i = 0; i < options; i++)
+    {
+        sequences.emplace_back(std::vector<int>{i});
+    }
+
+    while (!problem.is_done())
+    {
+        for (const std::vector<int>& sequence : sequences) {
+            if (problem.check_sequence_part_2(sequence)) {
+                return sequence.size();
+            }
+        }
+
+        sequences = extend_sequences(options, sequences);
+    }
+
+    return 0;
+}
+
 long part1(std::string filename)
 {
     auto lines = AoC::utils::read_input_file(filename);
@@ -141,8 +206,16 @@ long part1(std::string filename)
 long part2(std::string filename)
 {
     auto lines = AoC::utils::read_input_file(filename);
-    return 0;
-}
+    long sum = 0;
+    int counter = 0;
+    for (std::string line : lines)
+    {
+        long solution = solve_problem_part_2(line);
+        sum += solution;
+        std::cout << "Solved " << counter << "/" << lines.size() << ", solution: " << solution << std::endl;
+        counter++;
+    }
+    return sum;}
 
 void execute_part(std::function<long(std::string)> part_x, std::string file, int part_number)
 {
@@ -152,8 +225,8 @@ void execute_part(std::function<long(std::string)> part_x, std::string file, int
 
 int main()
 {
-    execute_part(part1, "day10.txt", 1);
+    execute_part(part1, "day10test.txt", 1);
     // Note: have to guess whether left or right is the outside of the circuit
-    execute_part(part2, "day10.txt", 2);
+    execute_part(part2, "day10test.txt", 2);
     return 0;
 }
