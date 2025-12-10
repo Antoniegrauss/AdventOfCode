@@ -14,7 +14,8 @@
 
 #include "read_file.hpp"
 
-struct Problem {
+struct Problem
+{
     // Initially all off
     std::vector<bool> lights;
 
@@ -24,79 +25,99 @@ struct Problem {
     // Pattern to match
     std::vector<bool> answer;
 
-    Problem(std::string line)  {
+    Problem(std::string line)
+    {
         auto parts = AoC::utils::split_by_delimiter(line, ' ');
-        for (char c : parts[0]) {
-            if (c == '.' || c == '#') {
-                answer.emplace_back(c);
+        for (char c : parts[0])
+        {
+            if (c == '.' || c == '#')
+            {
+                answer.emplace_back(c == '#');
                 lights.emplace_back(false);
             }
         }
 
-        for (int i = 1; i < parts.size() - 1; i++) {
+        for (int i = 1; i < parts.size() - 1; i++)
+        {
             std::vector<int> new_button;
-            for (char c : parts[i]) {
-                if (isdigit(c)) {
+            for (char c : parts[i])
+            {
+                if (isdigit(c))
+                {
                     new_button.emplace_back(c - '0');
                 }
             }
+            buttons.emplace_back(new_button);
         }
     }
 
-    void press_button(int button_id) {
-        for (int light_id : buttons[button_id]) {
-            lights[light_id] != lights[light_id];
+    void press_button(int button_id)
+    {
+        for (int light_id : buttons[button_id])
+        {
+            lights[light_id] = !lights[light_id];
         }
     }
 
-    bool check_sequence(const std::vector<int>& button_ids) {
+    bool check_sequence(const std::vector<int> &button_ids)
+    {
         reset();
-        for (int button_id : button_ids) {
+        for (int button_id : button_ids)
+        {
             press_button(button_id);
         }
         return is_done();
     }
 
-    bool is_done() const {
+    bool is_done() const
+    {
         return lights == answer;
     }
 
-    void reset() {
+    void reset()
+    {
         std::fill(lights.begin(), lights.end(), false);
     }
 };
 
-long solve_problem_part_1(std::string line) {
+std::vector<std::vector<int>> extend_sequences(int options,
+                                               const std::vector<std::vector<int>> &sequences)
+{
+    std::vector<std::vector<int>> new_sequences;
+    for (int i = 0; i < options; i++)
+    {
+        for (std::vector<int> sequence : sequences)
+        {
+            sequence.emplace_back(i);
+            new_sequences.emplace_back(sequence);
+        }
+    }
+    return new_sequences;
+}
+
+long solve_problem_part_1(std::string line)
+{
     Problem problem(line);
-    
+
     long button_presses = 0;
-    
+
     // Generate all combinations of button presses
     int options = problem.buttons.size();
-    std::vector<std::vector<int>> prev_sequences;
-    std::vector<std::vector<int>> new_sequences;
+    std::vector<std::vector<int>> sequences;
+    for (int i = 0; i < options; i++)
+    {
+        sequences.emplace_back(std::vector<int>{i});
+    }
 
-    while(! problem.is_done()) {
-        // First loop populate the sequences
-        if (prev_sequences.empty()) {
-            for (int i = 0; i < options; i++) {
-                new_sequences.emplace_back(std::vector<int>{i});
-                if (problem.check_sequence({i})) {
-                    return 1;
-                }
-            }
-            continue;
-        }
-
-        for (int i = 0; i < options; i++) {
-            for (std::vector<int> sequence : prev_sequences) {
-                sequence.emplace_back(i);
-                if (problem.check_sequence(sequence)) {
-                    return sequence.size();
-                }
-                new_sequences.emplace_back(sequence);
+    while (!problem.is_done())
+    {
+        for (const std::vector<int>& sequence : sequences) {
+            if (problem.check_sequence(sequence)) {
+                return sequence.size();
             }
         }
+
+        sequences = extend_sequences(options, sequences);
     }
 
     return 0;
@@ -106,8 +127,13 @@ long part1(std::string filename)
 {
     auto lines = AoC::utils::read_input_file(filename);
     long sum = 0;
-    for (std::string line : lines) {
-        sum += solve_problem_part_1(line);
+    int counter = 0;
+    for (std::string line : lines)
+    {
+        long solution = solve_problem_part_1(line);
+        sum += solution;
+        std::cout << "Solved " << counter << "/" << lines.size() << ", solution: " << solution << std::endl;
+        counter++;
     }
     return sum;
 }
