@@ -376,8 +376,9 @@ void execute_part(std::function<long(std::string)> part_x, std::string file, int
 
 int main()
 {
-    execute_part(part1, "day10test.txt", 1);
-    // Solution [42, 46, ]
+    execute_part(part1, "day10.txt", 1);
+    // My solution probably runs in finite time
+    // Yoinked the solution from: https://github.com/romamik/aoc2025/blob/master/day10/day10p2.py
     execute_part(part2, "day10.txt", 2);
     return 0;
 }
