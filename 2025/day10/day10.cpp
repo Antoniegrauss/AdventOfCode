@@ -106,13 +106,14 @@ struct Problem
         return is_done();
     }
 
-    Result check_sequence_part_2(const std::vector<int> &button_ids)
+    Result check_sequence_part_2(const std::vector<int> &button_ids, int option)
     {
         reset_joltage();
         for (int button_id : button_ids)
         {
             press_button_part_2(button_id);
         }
+        press_button_part_2(option);
         if (is_done_part_2())
         {
             return Result::Succeeded;
@@ -232,16 +233,6 @@ std::set<std::vector<int>> extend_sequences(std::vector<int> options,
     return new_sequences;
 }
 
-std::set<std::vector<int>> prune_sequences(Problem &problem, const std::set<std::vector<int>> &sequences)
-{
-    std::set<std::vector<int>> pruned;
-    std::copy_if(std::execution::par, sequences.begin(), sequences.end(), std::insert_iterator(pruned, pruned.begin()),
-                 [&problem](const std::vector<int> &sequence)
-                 {
-                     return problem.check_sequence_part_2(sequence) != Result::Failed;
-                 });
-    return pruned;
-}
 
 // Returns the starting sequences and possible buttons
 std::set<std::vector<int>> initial_partial_solve(const Problem &problem, int light_to_solve_for)
@@ -322,18 +313,26 @@ long solve_problem_part_2(std::string line)
     int presses = sequences.begin()->size();
     while (!problem.is_done())
     {
-        std::cout << "Presses: " << presses << ", num sequences: " << sequences.size() << std::endl;
-        if (std::execution::par, std::any_of(sequences.begin(), sequences.end(), [&problem](const std::vector<int> &sequence)
-                                             { return problem.check_sequence_part_2(sequence) == Result::Succeeded; }))
+        std::set<std::vector<int>> new_sequences;
+        for (int option : options)
         {
-            // Sequences should all have the same length
-            // Just return the length of the first one if we have a hit
-            return presses;
+            for (const std::vector<int>& sequence : sequences)
+            {
+                Result result = problem.check_sequence_part_2(sequence, option);
+                if (result == Result::Succeeded) {
+                    return sequence.size();
+                }
+                if (result == Result::Failed) continue;
+                
+                std::vector<int> new_sequence = sequence;
+                new_sequence.emplace_back(option);
+                std::sort(new_sequence.begin(), new_sequence.end());
+                new_sequences.insert(new_sequence);
+            }
         }
-
-        sequences = prune_sequences(problem, sequences);
-        sequences = extend_sequences(options, sequences);
+        std::cout << "Presses: " << presses << ", num sequences: " << sequences.size() << std::endl;
         presses++;
+        sequences = new_sequences;
     }
 
     return 0;
@@ -379,6 +378,6 @@ int main()
 {
     execute_part(part1, "day10test.txt", 1);
     // Solution [42, 46, ]
-    execute_part(part2, "day10test.txt", 2);
+    execute_part(part2, "day10.txt", 2);
     return 0;
 }
