@@ -68,6 +68,10 @@ struct Path
     bool operator==(const std::string& node_name) const {
         return current_node == node_name;
     }
+
+    bool operator<(const Path& other) const {
+        return current_node < other.current_node;
+    }
 };
 
 std::vector<Path> extend_paths(const std::vector<Path> &paths, const Graph &graph, long &paths_to_end, const std::string &end)
@@ -87,7 +91,7 @@ std::vector<Path> extend_paths(const std::vector<Path> &paths, const Graph &grap
             // If we already have a path to this node, add 1 to the path multiplicity
             auto path_already_exists = std::find(new_paths.begin(), new_paths.end(), connection);
             if (path_already_exists != new_paths.end()) {
-                path_already_exists->multiplicity += 1;
+                path_already_exists->multiplicity += path.multiplicity;
                 continue;
             }
             new_paths.emplace_back(Path{connection, path.multiplicity});
@@ -107,8 +111,6 @@ long count_paths_from_to(std::string start_node, const Graph &graph, const std::
     {
         paths = extend_paths(paths, graph, found_end_counter, end_node);
         step_counter++;
-        int total_paths = std::accumulate(paths.begin(), paths.end(), 0, [](int sum, const Path& path){return sum + path.multiplicity;});
-        std::cout << "Steps: " << step_counter << ", found " << found_end_counter << " paths, search size: " << total_paths  << std::endl;
     }
 
     return found_end_counter;
@@ -151,7 +153,7 @@ void execute_part(std::function<long(std::string)> part_x, std::string file, int
 int main()
 {
     // 649 is correct
-    execute_part(part1, "day11test3.txt", 1);
+    execute_part(part1, "day11.txt", 1);
     // 22500 is too low
     execute_part(part2, "day11.txt", 2);
     return 0;
