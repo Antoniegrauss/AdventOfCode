@@ -30,7 +30,7 @@ struct Point
     }
 };
 
-enum class Direction
+enum class Rotation
 {
     Original,
     Right90,
@@ -93,17 +93,17 @@ Side rotate_left(Side side)
     return opposite(rotate_right(side));
 }
 
-Side rotated_side(Side side, Direction rotation)
+Side rotated_side(Side side, Rotation rotation)
 {
     switch (rotation)
     {
-    case Direction::Original:
+    case Rotation::Original:
         return side;
-    case Direction::Right90:
+    case Rotation::Right90:
         return rotate_right(side);
-    case Direction::Left90:
+    case Rotation::Left90:
         return rotate_left(side);
-    case Direction::Opposite:
+    case Rotation::Opposite:
         return opposite(side);
     }
     assert(false);
@@ -160,12 +160,70 @@ struct Block
         middle_vertical = occupied_spaces[1] << 2 | occupied_spaces[4] << 1 | occupied_spaces[7];
         right = occupied_spaces[2] << 2 | occupied_spaces[5] << 1 | occupied_spaces[8];
     }
+
+    std::bitset<3> get_side_rotated(Side side, Rotation rotation) const
+    {
+        switch (rotation)
+        {
+        case Rotation::Original:
+            return get_side(side);
+        case Rotation::Opposite:
+            // If opposite always swap the order of the bits -> 123 to 321
+            return mirror(get_side(opposite(side)));
+        case Rotation::Right90:
+            // With right rotation, the horizontal lines do not need to be mirrored
+            if (side == Side::Top || side == Side::MiddleHorizontal || side == Side::Bottom) {
+                return get_side(rotate_right(side));
+            } else {
+                return mirror(get_side(rotate_right(side)));
+            }
+        case Rotation::Left90:
+            // With left rotation, the vertical lines do not need to be mirrored
+            if (side == Side::Left || side == Side::MiddleVertical || side == Side::Right) {
+                return get_side(rotate_right(side));
+            } else {
+                return mirror(get_side(rotate_right(side)));
+            }
+        }
+
+    }
+
+    std::bitset<3> get_side(Side side) const
+    {
+        switch (side)
+        {
+        case Side::Top:
+            return top;
+        case Side::MiddleHorizontal:
+            return middle_horizontal;
+        case Side::Bottom:
+            return bottom;
+        case Side::Left:
+            return left;
+        case Side::MiddleVertical:
+            return middle_vertical;
+        case Side::Right:
+            return right;
+        }
+        assert(false);
+    }
+
+    std::bitset<3> mirror(std::bitset<3> original) const
+    {
+        static const int bitset_size = 3;
+        std::bitset<bitset_size> reversed;
+        for (int i = 0, j = bitset_size - 1; i < bitset_size; i++, j--)
+        {
+            reversed[j] = original[i];
+        }
+        return reversed;
+    }
 };
 
 struct PlacedBlock
 {
     int block_id;
-    Direction orientation;
+    Rotation orientation;
     Point position;
 };
 
