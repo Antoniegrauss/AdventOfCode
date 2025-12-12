@@ -28,7 +28,17 @@ struct Point
     {
         return std::max(abs(x - other.x), abs(y - other.y));
     }
+
+    bool operator==(const Point& other) const {
+        return x == other.x && y == other.y;
+    }
 };
+
+bool collides(const std::bitset<3>& one, const std::bitset<3>& other) {
+    auto copy = one;
+    copy &= other;
+    return copy != 0;
+}
 
 enum class Rotation
 {
@@ -161,6 +171,10 @@ struct Block
         right = occupied_spaces[2] << 2 | occupied_spaces[5] << 1 | occupied_spaces[8];
     }
 
+    bool middle_occupied() const {
+        return occupied_spaces[4];
+    }
+
     std::bitset<3> get_side_rotated(Side side, Rotation rotation) const
     {
         switch (rotation)
@@ -225,6 +239,57 @@ struct PlacedBlock
     int block_id;
     Rotation orientation;
     Point position;
+
+    bool collides_with(const PlacedBlock& other, const std::vector<Block>& all_blocks) const {
+        int distance = position.chessboard_distance_to(other.position);
+        // If 3x3 squares do not overlap, do not have to check anything else
+        if (distance > 2) return false;
+        
+        // No blocks can have same center point
+        if (distance == 0) return true;
+
+        Side touching_side = where_is_other_block(other.position);
+
+        std::bitset<3> this_block_touching = all_blocks[block_id].get_side_rotated(touching_side, orientation);
+        std::bitset<3> other_block_touching = all_blocks[other.block_id].get_side_rotated(opposite(touching_side), other.orientation);
+        if (distance == 2) {
+            return collides(this_block_touching, other_block_touching);
+        }
+
+        // If distance 1, also have to test the middle row/cols
+        if (distance == 1) {
+            // Overlapping on 2 rows/cols
+            Side middle;
+            if (touching_side == Side::Top || touching_side == Side::Bottom) {
+                middle = Side::MiddleHorizontal;
+            }
+            middle = Side::MiddleVertical;
+
+            std::bitset<3> this_block_middle = all_blocks[block_id].get_side_rotated(middle, orientation);
+            std::bitset<3> other_block_middle = all_blocks[other.block_id].get_side_rotated(opposite(middle), other.orientation);
+
+            // Touching side ---- other.middle
+            if (collides(this_block_touching, other_block_middle)) return true;
+
+            // middle -----------other.touching side
+            return collides(this_block_middle, other_block_touching);
+        }
+
+        // Distance is negative??
+        assert(false);
+    }
+
+    Side where_is_other_block(const Point& other) const {
+        assert(!(position == other));
+
+        if (abs(position.x - other.x) >= abs(position.y - other.y)) {
+            // Horizontal distance is largest (or equal)
+            if (other.x > position.x) return Side::Right;
+            return Side::Left;
+        }
+        if (other.y > position.y) return Side::Bottom;
+        return Side::Top;
+    }
 };
 
 struct SpaceUnderTree
