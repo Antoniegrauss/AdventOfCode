@@ -5,6 +5,7 @@
 #include <functional>
 #include <cctype>
 #include <set>
+#include <map>
 #include <sstream>
 #include <cassert>
 #include <algorithm>
@@ -29,12 +30,14 @@ struct Point
         return std::max(abs(x - other.x), abs(y - other.y));
     }
 
-    bool operator==(const Point& other) const {
+    bool operator==(const Point &other) const
+    {
         return x == other.x && y == other.y;
     }
 };
 
-bool collides(const std::bitset<3>& one, const std::bitset<3>& other) {
+bool collides(const std::bitset<3> &one, const std::bitset<3> &other)
+{
     auto copy = one;
     copy &= other;
     return copy != 0;
@@ -171,7 +174,8 @@ struct Block
         right = occupied_spaces[2] << 2 | occupied_spaces[5] << 1 | occupied_spaces[8];
     }
 
-    bool middle_occupied() const {
+    bool middle_occupied() const
+    {
         return occupied_spaces[4];
     }
 
@@ -186,20 +190,25 @@ struct Block
             return mirror(get_side(opposite(side)));
         case Rotation::Right90:
             // With right rotation, the horizontal lines do not need to be mirrored
-            if (side == Side::Top || side == Side::MiddleHorizontal || side == Side::Bottom) {
+            if (side == Side::Top || side == Side::MiddleHorizontal || side == Side::Bottom)
+            {
                 return get_side(rotate_right(side));
-            } else {
+            }
+            else
+            {
                 return mirror(get_side(rotate_right(side)));
             }
         case Rotation::Left90:
             // With left rotation, the vertical lines do not need to be mirrored
-            if (side == Side::Left || side == Side::MiddleVertical || side == Side::Right) {
+            if (side == Side::Left || side == Side::MiddleVertical || side == Side::Right)
+            {
                 return get_side(rotate_right(side));
-            } else {
+            }
+            else
+            {
                 return mirror(get_side(rotate_right(side)));
             }
         }
-
     }
 
     std::bitset<3> get_side(Side side) const
@@ -240,27 +249,41 @@ struct PlacedBlock
     Rotation orientation;
     Point position;
 
-    bool collides_with(const PlacedBlock& other, const std::vector<Block>& all_blocks) const {
+    // For sorting disregard the position
+    bool operator<(const PlacedBlock& other) const {
+        if (block_id != other.block_id) {
+            return block_id < other.block_id;
+        }
+        return orientation < other.orientation;
+    }
+
+    bool collides_with(const PlacedBlock &other, const std::vector<Block> &all_blocks) const
+    {
         int distance = position.chessboard_distance_to(other.position);
         // If 3x3 squares do not overlap, do not have to check anything else
-        if (distance > 2) return false;
-        
+        if (distance > 2)
+            return false;
+
         // No blocks can have same center point
-        if (distance == 0) return true;
+        if (distance == 0)
+            return true;
 
         Side touching_side = where_is_other_block(other.position);
 
         std::bitset<3> this_block_touching = all_blocks[block_id].get_side_rotated(touching_side, orientation);
         std::bitset<3> other_block_touching = all_blocks[other.block_id].get_side_rotated(opposite(touching_side), other.orientation);
-        if (distance == 2) {
+        if (distance == 2)
+        {
             return collides(this_block_touching, other_block_touching);
         }
 
         // If distance 1, also have to test the middle row/cols
-        if (distance == 1) {
+        if (distance == 1)
+        {
             // Overlapping on 2 rows/cols
             Side middle;
-            if (touching_side == Side::Top || touching_side == Side::Bottom) {
+            if (touching_side == Side::Top || touching_side == Side::Bottom)
+            {
                 middle = Side::MiddleHorizontal;
             }
             middle = Side::MiddleVertical;
@@ -269,7 +292,8 @@ struct PlacedBlock
             std::bitset<3> other_block_middle = all_blocks[other.block_id].get_side_rotated(opposite(middle), other.orientation);
 
             // Touching side ---- other.middle
-            if (collides(this_block_touching, other_block_middle)) return true;
+            if (collides(this_block_touching, other_block_middle))
+                return true;
 
             // middle -----------other.touching side
             return collides(this_block_middle, other_block_touching);
@@ -279,15 +303,19 @@ struct PlacedBlock
         assert(false);
     }
 
-    Side where_is_other_block(const Point& other) const {
+    Side where_is_other_block(const Point &other) const
+    {
         assert(!(position == other));
 
-        if (abs(position.x - other.x) >= abs(position.y - other.y)) {
+        if (abs(position.x - other.x) >= abs(position.y - other.y))
+        {
             // Horizontal distance is largest (or equal)
-            if (other.x > position.x) return Side::Right;
+            if (other.x > position.x)
+                return Side::Right;
             return Side::Left;
         }
-        if (other.y > position.y) return Side::Bottom;
+        if (other.y > position.y)
+            return Side::Bottom;
         return Side::Top;
     }
 };
@@ -316,10 +344,15 @@ struct SpaceUnderTree
         }
     }
 
-    // TODO: implement
-    bool is_possible_to_place(const std::vector<int> &block_amounts)
+    bool is_possible_to_place(const std::vector<Block>& blocks)
     {
-        return false;
+        // Simple start, check whether there is even enough space
+        int total_space = width * height;
+        int block_pins = 0;
+        for (int i = 0; i < blocks.size(); i ++) {
+            block_pins += blocks[i].num_blocks * total_blocks[i];
+        }
+        return total_space >= block_pins;
     }
 };
 
@@ -335,6 +368,58 @@ Block parse_block(const std::vector<std::string> &lines, int block_id)
     }
 
     return Block(block_lines);
+}
+
+std::vector<PlacedBlock> generate_blocks(const std::vector<int> &x,
+                                         const std::vector<int> &y,
+                                         const std::vector<Rotation> &rotations,
+                                         const std::vector<int> &block_ids)
+{
+    std::vector<PlacedBlock> blocks;
+    for (int x : x)
+    {
+        for (int y : y)
+        {
+            for (Rotation rot : rotations)
+            {
+                for (int block_id : block_ids)
+                {
+                    blocks.emplace_back(PlacedBlock{block_id, rot, Point{x, y}});
+                }
+            }
+        }
+    }
+    return blocks;
+}
+
+auto pre_calculate_possible_placements(const std::vector<Block>& blocks) {
+    static const Point ORIGIN{0, 0};
+    static const std::vector<int> ALL_BLOCK_IDS = {0, 1, 2, 3, 4, 5};
+    static const std::vector<Rotation> ALL_ROTATIONS = {Rotation::Original, Rotation::Right90,
+                                                        Rotation::Left90, Rotation::Opposite};
+    static const std::vector<int> BLOCK_RELATIVE_OFFSETS = {-2, -1, 0, 1, 2};
+
+    std::map<PlacedBlock, std::vector<PlacedBlock>> possible_neighbours_per_block;
+    for (const PlacedBlock &this_block : generate_blocks({0},
+                                                         {0},
+                                                         ALL_ROTATIONS,
+                                                         ALL_BLOCK_IDS))
+    {
+        std::vector<PlacedBlock> possible_neighbours;
+        for (const PlacedBlock &other_block : generate_blocks(BLOCK_RELATIVE_OFFSETS,
+                                                              BLOCK_RELATIVE_OFFSETS,
+                                                              ALL_ROTATIONS,
+                                                              ALL_BLOCK_IDS))
+        {
+            if (!this_block.collides_with(other_block, blocks))
+            {
+                possible_neighbours.emplace_back(other_block);
+            }
+        }
+        possible_neighbours_per_block.insert({this_block, possible_neighbours});
+    }
+
+    return possible_neighbours_per_block;
 }
 
 long part1(std::string filename)
@@ -354,15 +439,18 @@ long part1(std::string filename)
         spaces_under_tree.emplace_back(SpaceUnderTree(lines[i]));
     }
 
+    // _______ Turns out puzzle input is a joke, is triavially solvable______________
     // Pre-calculate how all blocks fit together
+    // std::map<PlacedBlock, std::vector<PlacedBlock>> possible_neighbours_per_block;
 
-    return 0;
-}
+    long total_possible = 0;
+    for (SpaceUnderTree space_under_tree : spaces_under_tree) {
+        if (space_under_tree.is_possible_to_place(blocks)) {
+            total_possible += 1;
+        }
+    }
 
-long part2(std::string filename)
-{
-    auto lines = AoC::utils::read_input_file(filename);
-    return 0;
+    return total_possible;
 }
 
 void execute_part(std::function<long(std::string)> part_x, std::string file, int part_number)
@@ -373,8 +461,6 @@ void execute_part(std::function<long(std::string)> part_x, std::string file, int
 
 int main()
 {
-    // 500 is too high
-    execute_part(part1, "day12test.txt", 1);
-    execute_part(part2, "day12.txt", 2);
+    execute_part(part1, "day12.txt", 1);
     return 0;
 }
